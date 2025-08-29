@@ -21,25 +21,16 @@ export default async function LocaleLayout({
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 }) {
-  // Await params to get the locale
   const { locale } = await params;
-  
-  // Provide locale explicitly to getMessages
   const messages = await getMessages({ locale });
 
   return (
-    <html lang={locale}>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white`}
-      >
-        <NextIntlClientProvider messages={messages}>
-          <Navbar />
-          <main className="min-h-screen">
-            {children}
-          </main>
-          <Footer />
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <NextIntlClientProvider messages={messages}>
+      <Navbar />
+      <main className="min-h-screen">
+        {children}
+      </main>
+      <Footer />
+    </NextIntlClientProvider>
   );
 }

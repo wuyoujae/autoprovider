@@ -18,16 +18,16 @@ function CameraController() {
     
     const elapsed = state.clock.elapsedTime - startTime.current;
     
-    // 第一阶段：环形节点巡览 (0-4秒) - 缩短时间，每个节点快速浏览
-    if (elapsed < 4 && animationPhase === 0) {
-      const progress = elapsed / 4;
+    // 第一阶段：环形节点巡览 (0-6秒) - 适中的时间，舒缓不晕
+    if (elapsed < 6 && animationPhase === 0) {
+      const progress = elapsed / 6;
       const currentNodeAngle = progress * Math.PI * 2;
       
       // 摄像机围绕节点移动 - 减小距离让节点显示更大
       const cameraRadius = 3.2; // 进一步减小距离，提高清晰度
       const cameraX = Math.cos(currentNodeAngle) * cameraRadius;
       const cameraZ = Math.sin(currentNodeAngle) * cameraRadius;
-      const cameraY = 0.5 + Math.sin(progress * Math.PI * 8) * 0.2; // 轻微波动，8个节点对应8个波动
+      const cameraY = 0.5 + Math.sin(progress * Math.PI * 12) * 0.15; // 12个波动对应6秒，减小幅度
       
       camera.position.set(cameraX, cameraY, cameraZ);
       
@@ -37,10 +37,10 @@ function CameraController() {
       camera.lookAt(targetX, 0, targetZ);
       
     } 
-    // 第二阶段：聚焦到中心核心 (4-6秒)
-    else if (elapsed >= 4 && elapsed < 6 && animationPhase <= 1) {
+    // 第二阶段：聚焦到中心核心 (6-8秒)
+    else if (elapsed >= 6 && elapsed < 8 && animationPhase <= 1) {
       setAnimationPhase(1);
-      const progress = (elapsed - 4) / 2; // 2秒过渡
+      const progress = (elapsed - 6) / 2; // 2秒过渡
       const easeProgress = 1 - Math.pow(1 - progress, 3); // easeOut
       
       // 从当前位置移动到核心前方 - 调整目标位置确保居中
@@ -51,10 +51,10 @@ function CameraController() {
       camera.lookAt(0, 0, 0); // 看向场景中心，确保核心居中显示
       
     }
-    // 第三阶段：向上攀升到最终位置 (6-8秒)
-    else if (elapsed >= 6 && elapsed < 8 && animationPhase <= 2) {
+    // 第三阶段：向上攀升到最终位置 (8-10秒)
+    else if (elapsed >= 8 && elapsed < 10 && animationPhase <= 2) {
       setAnimationPhase(2);
-      const progress = (elapsed - 6) / 2; // 2秒攀升
+      const progress = (elapsed - 8) / 2; // 2秒攀升
       const easeProgress = 1 - Math.pow(1 - progress, 2); // easeOut
       
       // 从核心前方攀升到最终环绕位置 - 确保与第四阶段位置完全一致
@@ -68,8 +68,8 @@ function CameraController() {
       camera.lookAt(lookTarget);
       
     }
-    // 第四阶段：保持环绕运行状态 (8秒后)
-    else if (elapsed >= 8 && animationPhase <= 3) {
+    // 第四阶段：保持环绕运行状态 (10秒后)
+    else if (elapsed >= 10 && animationPhase <= 3) {
       setAnimationPhase(3);
       // 确保与第三阶段结束时的位置和视角完全一致
       camera.position.set(0, 2, 8);
@@ -382,12 +382,12 @@ export function ThreeBackground() {
         <AutomationNodes />
         
         {/* 延迟显示的元素 - 在核心聚焦后出现 */}
-        <DelayedComponent delay={4.5}>
+        <DelayedComponent delay={6.5}>
           <DataFlowLines />
         </DelayedComponent>
         
         {/* 环境装饰元素 - 在最终阶段显示 */}
-        <DelayedComponent delay={7}>
+        <DelayedComponent delay={9}>
           <mesh position={[-6, 3, -8]} rotation={[0, 0, Math.PI / 4]}>
             <boxGeometry args={[0.3, 0.3, 0.3]} />
             <meshBasicMaterial
