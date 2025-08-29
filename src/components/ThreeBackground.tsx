@@ -1,9 +1,102 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { useRef, useMemo, useState } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Points, PointMaterial } from '@react-three/drei';
 import * as THREE from 'three';
+
+// 动态摄像机控制器 - 实现开场运镜动画
+function CameraController() {
+  const { camera } = useThree();
+  const [animationPhase, setAnimationPhase] = useState(0);
+  const startTime = useRef<number | null>(null);
+  
+  useFrame((state) => {
+    if (startTime.current === null) {
+      startTime.current = state.clock.elapsedTime;
+    }
+    
+    const elapsed = state.clock.elapsedTime - startTime.current;
+    
+    // 第一阶段：环形节点巡览 (0-4秒) - 缩短时间，每个节点快速浏览
+    if (elapsed < 4 && animationPhase === 0) {
+      const progress = elapsed / 4;
+      const currentNodeAngle = progress * Math.PI * 2;
+      
+      // 摄像机围绕节点移动 - 减小距离让节点显示更大
+      const cameraRadius = 3.2; // 进一步减小距离，提高清晰度
+      const cameraX = Math.cos(currentNodeAngle) * cameraRadius;
+      const cameraZ = Math.sin(currentNodeAngle) * cameraRadius;
+      const cameraY = 0.5 + Math.sin(progress * Math.PI * 8) * 0.2; // 轻微波动，8个节点对应8个波动
+      
+      camera.position.set(cameraX, cameraY, cameraZ);
+      
+      // 看向当前节点 - 确保准确对准
+      const targetX = Math.cos(currentNodeAngle) * 4;
+      const targetZ = Math.sin(currentNodeAngle) * 4;
+      camera.lookAt(targetX, 0, targetZ);
+      
+    } 
+    // 第二阶段：聚焦到中心核心 (4-6秒)
+    else if (elapsed >= 4 && elapsed < 6 && animationPhase <= 1) {
+      setAnimationPhase(1);
+      const progress = (elapsed - 4) / 2; // 2秒过渡
+      const easeProgress = 1 - Math.pow(1 - progress, 3); // easeOut
+      
+      // 从当前位置移动到核心前方 - 调整目标位置确保居中
+      const startPos = camera.position.clone();
+      const targetPos = new THREE.Vector3(0, 0.5, 2.5); // 调整Y和Z位置，确保更好的居中视角
+      
+      camera.position.lerpVectors(startPos, targetPos, easeProgress);
+      camera.lookAt(0, 0, 0); // 看向场景中心，确保核心居中显示
+      
+    }
+    // 第三阶段：向上攀升到最终位置 (6-8秒)
+    else if (elapsed >= 6 && elapsed < 8 && animationPhase <= 2) {
+      setAnimationPhase(2);
+      const progress = (elapsed - 6) / 2; // 2秒攀升
+      const easeProgress = 1 - Math.pow(1 - progress, 2); // easeOut
+      
+      // 从核心前方攀升到最终环绕位置 - 确保与第四阶段位置完全一致
+      const startPos = new THREE.Vector3(0, 0.5, 2.5);
+      const finalPos = new THREE.Vector3(0, 2, 8); // 最终位置
+      
+      camera.position.lerpVectors(startPos, finalPos, easeProgress);
+      
+      // 逐渐调整视角到俯视角度 - 确保与第四阶段视角完全一致
+      const lookTarget = new THREE.Vector3(0, -0.5 * easeProgress, 0); // 调整目标点确保居中
+      camera.lookAt(lookTarget);
+      
+    }
+    // 第四阶段：保持环绕运行状态 (8秒后)
+    else if (elapsed >= 8 && animationPhase <= 3) {
+      setAnimationPhase(3);
+      // 确保与第三阶段结束时的位置和视角完全一致
+      camera.position.set(0, 2, 8);
+      camera.lookAt(0, -0.5, 0); // 与第三阶段结束时的视角保持一致
+    }
+  });
+
+  return null;
+}
+
+// 延迟启动的组件包装器
+function DelayedComponent({ delay, children }: { delay: number; children: React.ReactNode }) {
+  const [visible, setVisible] = useState(false);
+  const startTime = useRef<number | null>(null);
+  
+  useFrame((state) => {
+    if (startTime.current === null) {
+      startTime.current = state.clock.elapsedTime;
+    }
+    
+    if (state.clock.elapsedTime - startTime.current >= delay && !visible) {
+      setVisible(true);
+    }
+  });
+  
+  return visible ? <>{children}</> : null;
+}
 
 function StarField() {
   const ref = useRef<THREE.Points>(null);
@@ -69,7 +162,7 @@ function AutomationCore() {
   });
 
   return (
-    <mesh ref={meshRef} position={[0, 0, -3]}>
+    <mesh ref={meshRef} position={[0, 0, 0]}>
       <dodecahedronGeometry args={[1.2, 0]} />
       <meshBasicMaterial
         color="#ffffff"
@@ -225,7 +318,7 @@ function DataFlowLines() {
       const z = Math.sin(angle) * radius;
       
       const points = [
-        new THREE.Vector3(0, 0, -3), // 中心核心位置
+        new THREE.Vector3(0, 0, 0), // 中心核心位置更正为原点
         new THREE.Vector3(x, 0, z)   // 外围节点位置
       ];
       
@@ -277,58 +370,64 @@ export function ThreeBackground() {
   return (
     <div className="absolute inset-0">
       <Canvas
-        camera={{ position: [0, 2, 8], fov: 75 }}
+        camera={{ position: [3.2, 0.5, 0], fov: 75 }} // 调整初始位置对应新的摄像机距离和高度
         style={{ background: 'transparent' }}
       >
-        {/* 保留星空背景 */}
-        <StarField />
+        {/* 摄像机控制器 - 实现运镜动画 */}
+        <CameraController />
         
-        {/* 自动化系统核心组件 */}
+        {/* 立即显示的元素 */}
+        <StarField />
         <AutomationCore />
         <AutomationNodes />
-        <DataFlowLines />
         
-        {/* 环境装饰元素 - 代表自动化的精确性 */}
-        <mesh position={[-6, 3, -8]} rotation={[0, 0, Math.PI / 4]}>
-          <boxGeometry args={[0.3, 0.3, 0.3]} />
-          <meshBasicMaterial
-            color="#ffffff"
-            wireframe
-            transparent
-            opacity={0.04}
-          />
-        </mesh>
+        {/* 延迟显示的元素 - 在核心聚焦后出现 */}
+        <DelayedComponent delay={4.5}>
+          <DataFlowLines />
+        </DelayedComponent>
         
-        <mesh position={[6, -3, -8]}>
-          <octahedronGeometry args={[0.4]} />
-          <meshBasicMaterial
-            color="#ffffff"
-            wireframe
-            transparent
-            opacity={0.04}
-          />
-        </mesh>
-        
-        {/* 远景规则几何体 - 营造科技感氛围 */}
-        <mesh position={[0, 5, -12]} rotation={[Math.PI / 6, Math.PI / 4, 0]}>
-          <tetrahedronGeometry args={[0.6]} />
-          <meshBasicMaterial
-            color="#ffffff"
-            wireframe
-            transparent
-            opacity={0.03}
-          />
-        </mesh>
-        
-        <mesh position={[0, -5, -12]} rotation={[-Math.PI / 6, -Math.PI / 4, 0]}>
-          <icosahedronGeometry args={[0.5, 0]} />
-          <meshBasicMaterial
-            color="#ffffff"
-            wireframe
-            transparent
-            opacity={0.03}
-          />
-        </mesh>
+        {/* 环境装饰元素 - 在最终阶段显示 */}
+        <DelayedComponent delay={7}>
+          <mesh position={[-6, 3, -8]} rotation={[0, 0, Math.PI / 4]}>
+            <boxGeometry args={[0.3, 0.3, 0.3]} />
+            <meshBasicMaterial
+              color="#ffffff"
+              wireframe
+              transparent
+              opacity={0.04}
+            />
+          </mesh>
+          
+          <mesh position={[6, -3, -8]}>
+            <octahedronGeometry args={[0.4]} />
+            <meshBasicMaterial
+              color="#ffffff"
+              wireframe
+              transparent
+              opacity={0.04}
+            />
+          </mesh>
+          
+          <mesh position={[0, 5, -12]} rotation={[Math.PI / 6, Math.PI / 4, 0]}>
+            <tetrahedronGeometry args={[0.6]} />
+            <meshBasicMaterial
+              color="#ffffff"
+              wireframe
+              transparent
+              opacity={0.03}
+            />
+          </mesh>
+          
+          <mesh position={[0, -5, -12]} rotation={[-Math.PI / 6, -Math.PI / 4, 0]}>
+            <icosahedronGeometry args={[0.5, 0]} />
+            <meshBasicMaterial
+              color="#ffffff"
+              wireframe
+              transparent
+              opacity={0.03}
+            />
+          </mesh>
+        </DelayedComponent>
       </Canvas>
     </div>
   );
