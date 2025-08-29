@@ -1,0 +1,174 @@
+{
+  "nav": {
+    "home": "首页",
+    "features": "功能特性",
+    "comparison": "对比分析",
+    "demo": "产品演示",
+    "docs": "文档",
+    "contact": "联系我们"
+  },
+  "hero": {
+    "title": "AutoProvider",
+    "subtitle": "自主运营公司的未来",
+    "description": "与传统AI和Agent不同，AutoProvider创建了真正自主运营的公司，24小时无需人工干预。自驱动、自组织、自完善。",
+    "cta": "体验自动化",
+    "learnMore": "了解更多"
+  },
+  "features": {
+    "title": "革命性功能",
+    "subtitle": "构建世界首个真正自主的公司",
+    "autonomous": {
+      "title": "完全自主",
+      "description": "无需人工指令，AI驱动的决策制定和任务执行。"
+    },
+    "selfOrganizing": {
+      "title": "自我组织",
+      "description": "自动分配角色，分发任务，优化工作流程。"
+    },
+    "continuous": {
+      "title": "24/7运营",
+      "description": "永不停歇的工作，持续改进和目标达成。"
+    },
+    "adaptive": {
+      "title": "自我完善",
+      "description": "从每次交互中学习，持续进化能力。"
+    }
+  },
+  "comparison": {
+    "title": "AutoProvider vs 传统AI",
+    "subtitle": "见证革命性的差异",
+    "traditional": {
+      "title": "传统AI和Agent",
+      "items": [
+        "需要人工指令",
+        "限制于特定任务",
+        "被动操作",
+        "需要手动协调"
+      ]
+    },
+    "autoprovider": {
+      "title": "AutoProvider",
+      "items": [
+        "完全自驱动",
+        "无限任务范围",
+        "主动自主操作",
+        "自动协调"
+      ]
+    }
+  },
+  "demo": {
+    "title": "实际演示",
+    "subtitle": "观看自主公司的运作方式",
+    "description": "体验商业自动化的未来，AI实体作为一个完整、自给自足的公司协同工作。",
+    "watchDemo": "观看演示",
+    "tryNow": "立即试用"
+  },
+  "footer": {
+    "description": "构建自主商业运营的未来。",
+    "links": {
+      "product": "产品",
+      "docs": "文档",
+      "support": "支持",
+      "privacy": "隐私政策"
+    },
+    "copyright": "© 2024 AutoProvider. 保留所有权利。"
+  },
+  "docs": {
+    "title": "AutoProvider 文档",
+    "subtitle": "学习如何构建和部署自主运营的公司",
+    "sidebar": {
+      "gettingStarted": "快速开始",
+      "installation": "安装指南",
+      "quickStart": "快速上手",
+      "api": "API 参考",
+      "architecture": "系统架构"
+    },
+    "gettingStarted": {
+      "title": "快速开始",
+      "subtitle": "欢迎使用 AutoProvider",
+      "overview": {
+        "title": "概述",
+        "description": "AutoProvider 是一个革命性的平台，能够创建完全自主运营的公司。与传统 AI 和 Agent 不同，AutoProvider 构建的是真正自驱动、自组织、自完善的商业实体。"
+      },
+      "keyFeatures": {
+        "title": "核心特性",
+        "autonomous": "完全自主：无需人工干预的决策制定",
+        "continuous": "24/7 运营：永不停歇的业务执行",
+        "adaptive": "自我进化：从每次交互中学习和改进",
+        "scalable": "无限扩展：自动扩展业务能力和范围"
+      },
+      "quickDemo": {
+        "title": "快速体验",
+        "description": "立即体验 AutoProvider 的强大功能",
+        "button": "开始体验"
+      }
+    },
+    "installation": {
+      "title": "安装指南",
+      "subtitle": "快速部署您的自主公司",
+      "requirements": {
+        "title": "系统要求",
+        "nodeVersion": "Node.js 18.0 或更高版本",
+        "memory": "至少 4GB RAM",
+        "storage": "至少 10GB 可用存储空间"
+      },
+      "steps": {
+        "title": "安装步骤",
+        "step1": "下载 AutoProvider CLI 工具",
+        "step2": "创建新的自主公司项目",
+        "step3": "配置公司参数和目标",
+        "step4": "启动自主运营系统"
+      },
+      "verification": {
+        "title": "验证安装",
+        "description": "确认您的自主公司已正常启动"
+      }
+    },
+    "api": {
+      "title": "API 参考",
+      "subtitle": "完整的 API 文档和示例",
+      "authentication": {
+        "title": "身份验证",
+        "description": "了解如何安全地访问 AutoProvider API"
+      },
+      "companies": {
+        "title": "公司管理",
+        "description": "创建、配置和管理您的自主公司"
+      },
+      "tasks": {
+        "title": "任务系统",
+        "description": "分配任务并监控自主执行过程"
+      },
+      "analytics": {
+        "title": "分析数据",
+        "description": "获取公司运营数据和性能指标"
+      }
+    },
+    "architecture": {
+      "title": "系统架构",
+      "subtitle": "深入了解 AutoProvider 的技术架构",
+      "overview": {
+        "title": "架构概览",
+        "description": "AutoProvider 采用分布式、模块化的架构设计，确保高可用性和无限扩展能力。"
+      },
+      "core": {
+        "title": "核心组件",
+        "ai": "AI 决策引擎：负责自主决策和任务规划",
+        "execution": "执行引擎：处理具体的业务操作",
+        "learning": "学习系统：持续优化和能力提升",
+        "orchestration": "编排系统：协调多个 AI 实体协作"
+      },
+      "deployment": {
+        "title": "部署架构",
+        "description": "支持云原生部署，可在任何现代云平台运行"
+      }
+    },
+    "common": {
+      "edit": "编辑此页面",
+      "lastUpdated": "最后更新",
+      "onThisPage": "本页内容",
+      "previous": "上一页",
+      "next": "下一页"
+    }
+  }
+}

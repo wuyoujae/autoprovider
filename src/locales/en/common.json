@@ -1,0 +1,174 @@
+{
+  "nav": {
+    "home": "Home",
+    "features": "Features",
+    "comparison": "Comparison",
+    "demo": "Demo",
+    "docs": "Documentation",
+    "contact": "Contact"
+  },
+  "hero": {
+    "title": "AutoProvider",
+    "subtitle": "The Future of Autonomous Companies",
+    "description": "Unlike traditional AI and Agents, AutoProvider creates fully autonomous companies that operate 24/7 without human intervention. Self-driven, self-organizing, and self-improving.",
+    "cta": "Experience Automation",
+    "learnMore": "Learn More"
+  },
+  "features": {
+    "title": "Revolutionary Features",
+    "subtitle": "Building the world's first truly autonomous companies",
+    "autonomous": {
+      "title": "Fully Autonomous",
+      "description": "No human instructions needed. AI-driven decision making and task execution."
+    },
+    "selfOrganizing": {
+      "title": "Self-Organizing",
+      "description": "Automatically assigns roles, distributes tasks, and optimizes workflows."
+    },
+    "continuous": {
+      "title": "24/7 Operation",
+      "description": "Never stops working. Continuous improvement and goal achievement."
+    },
+    "adaptive": {
+      "title": "Self-Improving",
+      "description": "Learns from every interaction and continuously evolves capabilities."
+    }
+  },
+  "comparison": {
+    "title": "AutoProvider vs Traditional AI",
+    "subtitle": "See the revolutionary difference",
+    "traditional": {
+      "title": "Traditional AI & Agents",
+      "items": [
+        "Requires human instructions",
+        "Limited to specific tasks",
+        "Passive operation",
+        "Manual coordination needed"
+      ]
+    },
+    "autoprovider": {
+      "title": "AutoProvider",
+      "items": [
+        "Fully self-driven",
+        "Unlimited task scope",
+        "Active autonomous operation",
+        "Automatic coordination"
+      ]
+    }
+  },
+  "demo": {
+    "title": "See It In Action",
+    "subtitle": "Watch how autonomous companies operate",
+    "description": "Experience the future of business automation where AI entities work together as a complete, self-sustaining company.",
+    "watchDemo": "Watch Demo",
+    "tryNow": "Try Now"
+  },
+  "footer": {
+    "description": "Building the future of autonomous business operations.",
+    "links": {
+      "product": "Product",
+      "docs": "Documentation",
+      "support": "Support",
+      "privacy": "Privacy Policy"
+    },
+    "copyright": "© 2024 AutoProvider. All rights reserved."
+  },
+  "docs": {
+    "title": "AutoProvider Documentation",
+    "subtitle": "Learn how to build and deploy autonomous companies",
+    "sidebar": {
+      "gettingStarted": "Getting Started",
+      "installation": "Installation",
+      "quickStart": "Quick Start",
+      "api": "API Reference",
+      "architecture": "Architecture"
+    },
+    "gettingStarted": {
+      "title": "Getting Started",
+      "subtitle": "Welcome to AutoProvider",
+      "overview": {
+        "title": "Overview",
+        "description": "AutoProvider is a revolutionary platform that creates fully autonomous companies. Unlike traditional AI and Agents, AutoProvider builds truly self-driven, self-organizing, and self-improving business entities."
+      },
+      "keyFeatures": {
+        "title": "Key Features",
+        "autonomous": "Fully Autonomous: Decision making without human intervention",
+        "continuous": "24/7 Operation: Never-stopping business execution",
+        "adaptive": "Self-Evolution: Learning and improving from every interaction",
+        "scalable": "Unlimited Scaling: Automatically expanding capabilities and scope"
+      },
+      "quickDemo": {
+        "title": "Quick Experience",
+        "description": "Experience AutoProvider's powerful capabilities immediately",
+        "button": "Start Experience"
+      }
+    },
+    "installation": {
+      "title": "Installation Guide",
+      "subtitle": "Deploy your autonomous company quickly",
+      "requirements": {
+        "title": "System Requirements",
+        "nodeVersion": "Node.js 18.0 or higher",
+        "memory": "At least 4GB RAM",
+        "storage": "At least 10GB available storage"
+      },
+      "steps": {
+        "title": "Installation Steps",
+        "step1": "Download AutoProvider CLI tool",
+        "step2": "Create new autonomous company project",
+        "step3": "Configure company parameters and goals",
+        "step4": "Start autonomous operation system"
+      },
+      "verification": {
+        "title": "Verify Installation",
+        "description": "Confirm your autonomous company has started normally"
+      }
+    },
+    "api": {
+      "title": "API Reference",
+      "subtitle": "Complete API documentation and examples",
+      "authentication": {
+        "title": "Authentication",
+        "description": "Learn how to securely access AutoProvider API"
+      },
+      "companies": {
+        "title": "Company Management",
+        "description": "Create, configure, and manage your autonomous companies"
+      },
+      "tasks": {
+        "title": "Task System",
+        "description": "Assign tasks and monitor autonomous execution process"
+      },
+      "analytics": {
+        "title": "Analytics",
+        "description": "Get company operation data and performance metrics"
+      }
+    },
+    "architecture": {
+      "title": "System Architecture",
+      "subtitle": "Deep dive into AutoProvider's technical architecture",
+      "overview": {
+        "title": "Architecture Overview",
+        "description": "AutoProvider uses a distributed, modular architecture design ensuring high availability and unlimited scalability."
+      },
+      "core": {
+        "title": "Core Components",
+        "ai": "AI Decision Engine: Responsible for autonomous decision making and task planning",
+        "execution": "Execution Engine: Handles specific business operations",
+        "learning": "Learning System: Continuous optimization and capability enhancement",
+        "orchestration": "Orchestration System: Coordinates multiple AI entities collaboration"
+      },
+      "deployment": {
+        "title": "Deployment Architecture",
+        "description": "Supports cloud-native deployment, runs on any modern cloud platform"
+      }
+    },
+    "common": {
+      "edit": "Edit this page",
+      "lastUpdated": "Last updated",
+      "onThisPage": "On this page",
+      "previous": "Previous",
+      "next": "Next"
+    }
+  }
+}
