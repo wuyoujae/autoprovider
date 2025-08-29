@@ -16,11 +16,14 @@ const geistMono = Geist_Mono({
 
 export default async function LocaleLayout({
   children,
-  params: { locale }
+  params
 }: {
   children: React.ReactNode;
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 }) {
+  // Await params to get the locale
+  const { locale } = await params;
+  
   // Provide locale explicitly to getMessages
   const messages = await getMessages({ locale });
 
