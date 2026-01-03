@@ -1,0 +1,377 @@
+// 统一的 Markdown 内容样式
+// 所有需要渲染 Markdown 的组件都应该使用这些样式
+
+// 主要的 Markdown 内容容器样式（用于普通消息）
+@mixin markdown-content-base {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9375rem;
+  font-family: "Source Serif 4", serif;
+  line-height: 1.6;
+  word-wrap: break-word;
+  word-break: break-word;
+
+  :deep(h1) {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 1rem 0 0.75rem 0;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  :deep(h2) {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0.875rem 0 0.625rem 0;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  :deep(h3) {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0.75rem 0 0.5rem 0;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  :deep(h4),
+  :deep(h5),
+  :deep(h6) {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0.625rem 0 0.4375rem 0;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  :deep(p) {
+    margin: 0.5rem 0;
+    line-height: 1.6;
+  }
+
+  :deep(strong) {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  :deep(em) {
+    font-style: italic;
+  }
+
+  :deep(ul),
+  :deep(ol) {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+    line-height: 1.6;
+  }
+
+  :deep(ul) {
+    list-style-type: disc;
+  }
+
+  :deep(ol) {
+    list-style-type: decimal;
+  }
+
+  :deep(li) {
+    margin: 0.25rem 0;
+    line-height: 1.6;
+  }
+
+  // 代码块样式
+  :deep(pre) {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 0.75rem 0;
+    overflow-x: auto;
+    font-family: "Courier New", monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+
+    code {
+      color: rgba(255, 255, 255, 0.9);
+      white-space: pre;
+      background: transparent;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      font-size: inherit;
+    }
+  }
+
+  // 行内代码样式
+  :deep(code) {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.25rem;
+    padding: 0.125rem 0.375rem;
+    font-family: "Courier New", monospace;
+    font-size: 0.875rem;
+    color: rgba(254, 238, 222, 0.9);
+  }
+
+  :deep(a) {
+    color: rgba(254, 238, 222, 0.9);
+    text-decoration: underline;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: #feeede;
+    }
+  }
+
+  // 引用块样式
+  :deep(blockquote) {
+    border-left: 3px solid rgba(254, 238, 222, 0.3);
+    padding-left: 1rem;
+    margin: 0.75rem 0;
+    color: rgba(255, 255, 255, 0.7);
+    font-style: italic;
+  }
+
+  // 水平线样式
+  :deep(hr) {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 1rem 0;
+  }
+
+  // 表格样式
+  :deep(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+  }
+
+  :deep(th),
+  :deep(td) {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.5rem;
+    text-align: left;
+  }
+
+  :deep(th) {
+    background: rgba(255, 255, 255, 0.05);
+    font-weight: 600;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 0.875rem;
+
+    :deep(h1) {
+      font-size: 1.375rem;
+    }
+
+    :deep(h2) {
+      font-size: 1.125rem;
+    }
+
+    :deep(h3) {
+      font-size: 1rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    font-size: 0.8125rem;
+
+    :deep(h1) {
+      font-size: 1.25rem;
+    }
+
+    :deep(h2) {
+      font-size: 1rem;
+    }
+
+    :deep(h3) {
+      font-size: 0.9375rem;
+    }
+  }
+}
+
+// 紧凑版 Markdown 样式（用于折叠/次要内容，如 through 组件）
+@mixin markdown-content-compact {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+  font-family: "Source Serif 4", serif;
+  line-height: 1.6;
+  word-wrap: break-word;
+  word-break: break-word;
+
+  :deep(h1) {
+    font-size: 1.375rem;
+    font-weight: 600;
+    margin: 0.875rem 0 0.625rem 0;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  :deep(h2) {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0.75rem 0 0.5rem 0;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  :deep(h3) {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0.625rem 0 0.4375rem 0;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  :deep(h4),
+  :deep(h5),
+  :deep(h6) {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin: 0.5rem 0 0.375rem 0;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  :deep(p) {
+    margin: 0.4375rem 0;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  :deep(strong) {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  :deep(em) {
+    font-style: italic;
+  }
+
+  :deep(ul),
+  :deep(ol) {
+    margin: 0.4375rem 0;
+    padding-left: 1.5rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  :deep(ul) {
+    list-style-type: disc;
+  }
+
+  :deep(ol) {
+    list-style-type: decimal;
+  }
+
+  :deep(li) {
+    margin: 0.25rem 0;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  // 代码块样式
+  :deep(pre) {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    padding: 0.875rem;
+    margin: 0.625rem 0;
+    overflow-x: auto;
+    font-family: "Courier New", monospace;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+
+    code {
+      color: rgba(255, 255, 255, 0.9);
+      white-space: pre;
+      background: transparent;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      font-size: inherit;
+    }
+  }
+
+  // 行内代码样式
+  :deep(code) {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.25rem;
+    padding: 0.125rem 0.3125rem;
+    font-family: "Courier New", monospace;
+    font-size: 0.8125rem;
+    color: rgba(254, 238, 222, 0.9);
+  }
+
+  :deep(a) {
+    color: rgba(254, 238, 222, 0.9);
+    text-decoration: underline;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: #feeede;
+    }
+  }
+
+  // 引用块样式
+  :deep(blockquote) {
+    border-left: 3px solid rgba(254, 238, 222, 0.3);
+    padding-left: 0.875rem;
+    margin: 0.625rem 0;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+  }
+
+  // 水平线样式
+  :deep(hr) {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 0.875rem 0;
+  }
+
+  // 表格样式
+  :deep(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.625rem 0;
+  }
+
+  :deep(th),
+  :deep(td) {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.4375rem;
+    text-align: left;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  :deep(th) {
+    background: rgba(255, 255, 255, 0.05);
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  @media (max-width: 768px) {
+    font-size: 0.8125rem;
+
+    :deep(h1) {
+      font-size: 1.25rem;
+    }
+
+    :deep(h2) {
+      font-size: 1rem;
+    }
+
+    :deep(h3) {
+      font-size: 0.9375rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    font-size: 0.75rem;
+
+    :deep(h1) {
+      font-size: 1.125rem;
+    }
+
+    :deep(h2) {
+      font-size: 0.9375rem;
+    }
+
+    :deep(h3) {
+      font-size: 0.875rem;
+    }
+  }
+}

@@ -1,0 +1,10 @@
+Flask
+Flask-Cors
+PyMySQL
+Pillow
+PyJWT
+qiniu
+openai
+docling
+numpy
+

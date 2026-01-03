@@ -1,0 +1,7 @@
+{
+  "watch": ["."],
+  "ignore": [
+    "config/llm-config.json"
+  ]
+}
+

@@ -1,0 +1,397 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "create_file",
+      "description": "Create one or more files with optional initial content. This is the preferred method for creating NEW files - you can write the complete code in one call instead of create + edit.\n\n⚠️ BEST PRACTICE:\n- For NEW files: Use 'files' array with 'content' to create and write code in ONE call.\n- For folders: Use 'file_names' array with '.floder' suffix.\n\nPaths must be absolute from project root (e.g., /frontend/src/views/Login.vue).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "file_path": {
+                  "type": "string",
+                  "description": "Absolute path of the file to create (e.g., /src/components/Button.vue)"
+                },
+                "content": {
+                  "type": "string",
+                  "description": "The complete source code/content to write into the file. Can be empty string for blank file."
+                }
+              },
+              "required": ["file_path", "content"]
+            },
+            "description": "Array of files to create with content. Each object has 'file_path' and 'content'. Example: [{\"file_path\": \"/src/App.vue\", \"content\": \"<template>...</template>\"}]"
+          },
+          "file_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "(Legacy/Folders) List of folder paths ending with '.floder', or empty files. Prefer 'files' array for files with content."
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "grep_file",
+      "description": "Recursively search the current project for files containing a keyword. Supports case sensitivity toggle, extra ignore paths (merged with default ignores and .grepignore), and limits for result count and per-file scan size. Returns matched file relative paths and match counts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "description": "Required. The keyword/text to search for."
+          },
+          "case_sensitive": {
+            "type": "boolean",
+            "description": "Whether the search is case-sensitive. Default false."
+          },
+          "ignore_paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Optional. Extra directories/path segments to ignore, merged with defaults and .grepignore."
+          },
+          "max_results": {
+            "type": "number",
+            "description": "Optional. Max number of matched files to return. Default 200."
+          },
+          "max_file_size_mb": {
+            "type": "number",
+            "description": "Optional. Max file size (MB) to scan per file. Default 2MB."
+          }
+        },
+        "required": ["keyword"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "delete_file",
+      "description": "Delete a file or folder at the specified path. Folders must end with '.floder'. Deleting a folder will recursively remove all its contents. Multiple files/folders can be deleted in one call. Paths must exist; operation fails if any path is invalid.Must provide a full path starting from the root directory, such as/frontend/src/views/login.vue. Represents deleting a login.vue",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of absolute file or folder paths to delete. Folder paths must use '.floder' suffix. Order matters when deleting nested items (delete children before parent if needed)."
+          }
+        },
+        "required": ["file_paths"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "edit_file",
+      "description": "Smart source code editor. Apply changes to a file by matching context.\n\n⚠️ CORE STRATEGY: 'Anchor-Based Replacement'\nTo ensure the edit is applied correctly, you must provide enough SURROUNDING CODE (context) in `code_edit` to locate the change.\n\n### BEST PRACTICES FOR `code_edit`:\n\n1. **REPLACING A BLOCK (Function/Class/Tag)**:\n   - Include the opening line, the NEW content, and the closing line.\n   - Example (Vue): Replace the whole template:\n     `<template>\n       <!-- new content -->\n     </template>`\n     (The system will find the existing <template> block and REPLACE it.)\n\n2. **MODIFYING INSIDE A BLOCK**:\n   - Use `// ... existing code ...` to skip unchanged parts.\n   - Example (Python): Change one line in a function:\n     `def calculate(x):\n         # ... existing code ...\n         return x * 2  # This line is changed\n         # ... existing code ...`\n\n3. **INSERTING NEW CODE**:\n   - Include the line BEFORE and the line AFTER the insertion point to anchor it.\n\n⚠️ NEVER output an empty `code_edit`.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_file": {
+            "type": "string",
+            "description": "REQUIRED. The file path (e.g., src/components/Header.vue)."
+          },
+          "instructions": {
+            "type": "string",
+            "description": "REQUIRED. A concise summary of the change (e.g., 'Replace the navigation bar in the template')."
+          },
+          "code_edit": {
+            "type": "string",
+            "description": "REQUIRED. The code snippet with context anchors. MUST include `// ... existing code ...` (or language equivalent) for omitted sections."
+          }
+        },
+        "required": ["target_file", "instructions", "code_edit"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "read_file",
+      "description": "Read the content of one or more files. Only files with extensions are allowed (folders cannot be read). Multiple files can be read in a single call by providing their full paths.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of absolute file paths to read, each including extension (e.g., /frontend/src/components/loginPannle/loginPannle.vue). Folder paths are invalid and will cause an error."
+          }
+        },
+        "required": ["file_paths"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "web_search",
+      "description": "Single web action (search/read/chat) controlled by search_type. web_search: keyword search (returns 1 webpage item). web_reader: read one URL. chat: ask a question. Response is trimmed to search_content plus webpages/content/answer only.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search_content": {
+            "type": "string",
+            "description": "Required. Keyword for search, URL to read, or question for chat."
+          },
+          "search_type": {
+            "type": "string",
+            "enum": [
+              "web_search",
+              "web_reader",
+              "chat",
+              "search",
+              "web",
+              "reader",
+              "read",
+              "qa",
+              "ask"
+            ],
+            "description": "Required. Mode: web_search, web_reader, chat (aliases: search/web/reader/read/qa/ask)."
+          },
+          "search_theme": {
+            "type": "object",
+            "description": "Optional. Reserved for extra params (scope/format/model, etc.); currently unused."
+          }
+        },
+        "required": ["search_content", "search_type"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "web_read",
+      "description": "Read a single public URL (delegates to web_search with search_type=web_reader). Response is trimmed to search_content and content.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search_content": {
+            "type": "string",
+            "description": "Required. URL to read."
+          },
+          "search_type": {
+            "type": "string",
+            "enum": ["web_reader", "reader", "read"],
+            "description": "Required. Use web_reader (aliases reader/read)."
+          },
+          "search_theme": {
+            "type": "object",
+            "description": "Optional. Reserved for extra params; currently unused."
+          }
+        },
+        "required": ["search_content", "search_type"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sql_operation",
+      "description": "Execute a SQL command on the managed database environment. All SQL operations must be compatible with the existing schema and state tracked in the system's sql-operationed log. Only one SQL statement per call is supported (e.g., CREATE, ALTER, INSERT, UPDATE, DELETE, SELECT).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sql": {
+            "type": "string",
+            "description": "A valid SQL statement to execute (e.g., CREATE TABLE, INSERT INTO, SELECT, etc.). Must conform to the current database schema and constraints."
+          }
+        },
+        "required": ["sql"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "bash_operation",
+      "description": "Execute one or more bash commands in a specified working directory on a Linux-Ubuntu system. Commands run sequentially in the order provided. Safety restrictions apply: destructive operations (e.g., rm -rf, system modifications) are blocked. Working directory must exist.\n\n⚠️ CRITICAL FORMAT REQUIREMENT:\n- 'commands' MUST be a JSON ARRAY, NOT a string!\n- WRONG: {\"commands\": \"[{...}]\"} ← string is INVALID\n- CORRECT: {\"commands\": [{...}]} ← array is VALID\n\nExample of CORRECT usage:\n{\"commands\": [{\"working_directory\": \"/frontend\", \"instruction\": \"npm install axios\"}]}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "commands": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "working_directory": {
+                  "type": "string",
+                  "description": "Absolute path where the command should be executed (e.g., /frontend). Must be a valid existing directory."
+                },
+                "instruction": {
+                  "type": "string",
+                  "description": "The bash command to run (e.g., 'npm install axios'). Must be non-destructive and safe. Dangerous commands like 'rm -rf' will be blocked."
+                }
+              },
+              "required": ["working_directory", "instruction"]
+            },
+            "description": "MUST be a JSON ARRAY of objects (NOT a string!). Each object contains 'working_directory' (string) and 'instruction' (string). Example: [{\"working_directory\": \"/app\", \"instruction\": \"npm install\"}]"
+          }
+        },
+        "required": ["commands"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "create_todolist",
+      "description": "Create a new todolist with a structured name and multiple todo items. The todolist name must follow the format: 'project-id-timestamp-todolist-name'. Multiple TODO items can be included within a single call.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "todolist_name": {
+            "type": "string",
+            "description": "The name of the todolist, must follow the format: 'project-id'-'timestamp'-'todolist-name' (e.g., '100001-1740321211-new-task')"
+          },
+          "todos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "description": "The title/description of the todo item"
+                }
+              },
+              "required": ["title"]
+            },
+            "description": "List of todo items to include in the todolist. Each item must have a 'title'."
+          }
+        },
+        "required": ["todolist_name", "todos"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "done_todo",
+      "description": "Mark specified todo items as completed within a given todolist. The todolist is identified by its structured name (e.g., 'project-id-timestamp-todolist-name'), and each todo item is matched by its title. Only todos present in the list will be marked as done.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "todolist_name": {
+            "type": "string",
+            "description": "The name of the target todolist in the format 'project-id-timestamp-todolist-name' (e.g., '100001-1740321211-new-task')"
+          },
+          "todos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "description": "The title of the todo item to be marked as done"
+                }
+              },
+              "required": ["title"]
+            },
+            "description": "List of todo items (by title) to mark as completed within the specified todolist"
+          }
+        },
+        "required": ["todolist_name", "todos"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "exit_todolist",
+      "description": "Skip the current todolist workloop for this session. If there are running todolists, the agent exits the loop for this round without changing any todolist status.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "todolist_name": {
+            "type": "string",
+            "description": "Optional: specific todolist name to reference when exiting. If omitted, applies to any running todolist."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Optional note about why the loop is exited."
+          }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "deploy",
+      "description": "Automatically deploy the current project to the production/staging environment. No parameters required. Performs build, testing, and deployment steps in a safe, predefined pipeline. This is a high-impact operation; ensure all validations pass before calling.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "generate_project_name",
+      "description": "Generate a unique, trademark-friendly, and globally culturally safe project name based on the provided core domain or function. The name must be concise, memorable, hint at the project's purpose, and avoid existing brand conflicts. Uses creative word blending, metaphor, or keyword combination strategies. Returns a single recommended name. You must call this only when the project name is 'New project' or empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "core_concept": {
+            "type": "string",
+            "description": "Only 4-6 words .The central domain, functionality, or mission of the project (e.g., 'real-time collaborative AI', 'decentralized identity management')."
+          }
+        },
+        "required": ["core_concept"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "generate_conversation_name",
+      "description": "Generate a verb-driven, concise, and contextually meaningful name for a conversation thread based on a descriptive phrase. The phrase is transformed into an imperative, kebab-case action name (e.g., 'fix login bug' → 'fix-login-bug'), using active verbs and task-focused semantics. Use only when naming the session for the first time.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "A natural language phrase describing the conversation purpose/action, e.g., 'implement search', 'debug payment failure', 'refactor user module'."
+          }
+        },
+        "required": ["description"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "linter",
+      "description": "Run project linting. Prefer project’s own `npm run lint` if present; otherwise fallback to a preset command by type (current preset: nextjs -> `npx eslint . --ext .js,.jsx,.ts,.tsx --cache=false --format json`). Returns `error_count` (0 if no/parsing errors) and `error_details` (full output).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Tech stack for preset command when no project lint script exists. Current supported: nextjs."
+          }
+        },
+        "required": []
+      }
+    }
+  }
+]

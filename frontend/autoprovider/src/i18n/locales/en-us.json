@@ -1,0 +1,590 @@
+{
+  "nav": {
+    "changelog": "Changelog",
+    "contact": "Contact Us",
+    "pricing": "Pricing",
+    "menu": "Menu",
+    "myProjects": "My Projects",
+    "pleaseLogin": "Please Login"
+  },
+  "user": {
+    "name": "Username"
+  },
+  "language": {
+    "zh": "中文",
+    "en": "English",
+    "title": "Language"
+  },
+  "platform": {
+    "name": "utoprovider"
+  },
+  "prompt": {
+    "projectType": {
+      "app": "Mobile App",
+      "web": "Web App",
+      "desktop": "Desktop App"
+    },
+    "placeholder": "Describe what you want to build...",
+    "send": "Send",
+    "creating": "Creating...",
+    "clear": "Clear",
+    "dropFile": "Drop files here to upload",
+    "uploadedFiles": "Uploaded Files",
+    "projectType": {
+      "app": "Mobile App",
+      "web": "Web App",
+      "desktop": "Desktop App"
+    },
+    "onlyWebSupported": "Currently only Web app development is supported. Contact us for early access to other platforms."
+  },
+  "loading": {
+    "creating": "Creating project..."
+  },
+  "login": {
+    "title": "Welcome Back",
+    "subtitle": "Sign in to your account",
+    "email": "Email",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "signIn": "Sign In",
+    "noAccount": "Don't have an account?",
+    "signUp": "Sign Up",
+    "termsText": "By signing in, you agree to our",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy"
+  },
+  "register": {
+    "title": "Create Account",
+    "subtitle": "Start your journey with us",
+    "username": "Username",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "signUp": "Sign Up",
+    "hasAccount": "Already have an account?",
+    "signIn": "Sign In",
+    "termsText": "By creating an account, you agree to our",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy"
+  },
+  "dashboard": {
+    "nav": {
+      "projects": "Projects",
+      "credits": "Token Usage",
+      "preferences": "Preferences"
+    },
+    "user": {
+      "profile": "Profile",
+      "logout": "Logout",
+      "delete": "Delete Account"
+    }
+  },
+  "project": {
+    "title": "My Projects",
+    "subtitle": "Manage and view all your projects",
+    "createNew": "Create New Project",
+    "createDescription": "Click to create a new project",
+    "createNewProjectHint": "Ready to start your new project? Describe the application you want to build in natural language, and let AutoProvider make it happen!",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteConfirm": {
+      "title": "Delete this project?",
+      "description": "Once deleted, the project can no longer be used. You may create a new one anytime.",
+      "confirm": "Confirm delete",
+      "cancel": "Cancel"
+    },
+    "deleteFailed": "Failed to delete the project. Please try again later.",
+    "deletePending": "Please wait until the current deletion finishes",
+    "status": {
+      "active": "Active",
+      "building": "Building",
+      "error": "Error",
+      "draft": "Draft"
+    },
+    "empty": {
+      "title": "No projects yet",
+      "description": "Create your first project and start building with AutoProvider"
+    }
+  },
+  "credits": {
+    "title": "Credits Usage",
+    "subtitle": "Manage your subscription and track credit usage",
+    "currentPlan": "Current Plan",
+    "remainingCredits": "Remaining Credits",
+    "upgradePlan": "Upgrade Plan",
+    "creditHistory": "Credit History",
+    "filterBy": "Filter Type",
+    "all": "All",
+    "income": "Income",
+    "expense": "Expense",
+    "earned": "Earned",
+    "used": "Used",
+    "expired": "Expired",
+    "date": "Date",
+    "type": "Type",
+    "amount": "Amount",
+    "description": "Description",
+    "exportCsv": "Export CSV",
+    "selectDate": "Select Date",
+    "plans": {
+      "free": "Free",
+      "pro": "Pro",
+      "ultra": "Ultra",
+      "ultimate": "Ultimate"
+    },
+    "types": {
+      "income": "Income",
+      "expense": "Expense",
+      "projectCreation": "Project Creation",
+      "projectUpdate": "Project Update",
+      "deployment": "Deployment",
+      "purchase": "Purchase",
+      "refund": "Refund",
+      "bonus": "Bonus"
+    },
+    "upgradeDescriptions": {
+      "free": "Upgrade to Pro for more credits and features",
+      "pro": "Upgrade to Ultra for advanced features",
+      "ultra": "Upgrade to Ultimate for unlimited credits",
+      "ultimate": "You have the highest tier subscription"
+    },
+    "upgradeButtons": {
+      "toPro": "Upgrade to Pro",
+      "toUltra": "Upgrade to Ultra",
+      "toUltimate": "Upgrade to Ultimate",
+      "maxLevel": "Max Level"
+    },
+    "empty": {
+      "title": "No credit history",
+      "description": "Your credit usage history will appear here"
+    },
+    "pagination": {
+      "info": "Page {current} / {total} · {count} records",
+      "previous": "Previous",
+      "next": "Next"
+    }
+  },
+  "tokens": {
+    "title": "Token Usage History",
+    "subtitle": "View and manage your token usage",
+    "historyTitle": "Token Usage History",
+    "totalUsed": "Total Usage Records",
+    "date": "Date",
+    "tokensUsed": "Tokens Used",
+    "reason": "Usage Reason",
+    "exportCsv": "Export CSV",
+    "selectDate": "Select Date",
+    "allDates": "All Dates",
+    "loading": "Loading...",
+    "empty": {
+      "title": "No usage records",
+      "description": "Your token usage history will appear here"
+    },
+    "pagination": {
+      "info": "Page {current} / {total} · {count} records",
+      "previous": "Previous",
+      "next": "Next"
+    }
+  },
+  "preferences": {
+    "title": "Preferences",
+    "subtitle": "Manage your account settings and preferences",
+    "search": {
+      "placeholder": "Search settings...",
+      "noResults": "No results found",
+      "noResultsDescription": "Try adjusting your search terms"
+    },
+    "sections": {
+      "agentModels": "Agent Model Configuration",
+      "editFileModels": "EditFile Model Configuration",
+      "miniModels": "Mini Model Configuration"
+    },
+    "items": {
+      "profile": {
+        "username": {
+          "label": "Username",
+          "description": "Your unique username for the platform",
+          "placeholder": "Enter username"
+        },
+        "email": {
+          "label": "Email Address",
+          "description": "Your primary email for notifications and login",
+          "placeholder": "Enter email address"
+        },
+        "bio": {
+          "label": "Bio",
+          "description": "Tell us about yourself",
+          "placeholder": "Write a short bio..."
+        }
+      },
+      "appearance": {
+        "theme": {
+          "label": "Theme",
+          "description": "Select your preferred theme",
+          "options": {
+            "dark": "Dark",
+            "light": "Light",
+            "auto": "Auto"
+          }
+        },
+        "fontSize": {
+          "label": "Font Size",
+          "description": "Adjust the size of text across the platform",
+          "options": {
+            "small": "Small",
+            "medium": "Medium",
+            "large": "Large"
+          }
+        }
+      },
+      "language": {
+        "interface": {
+          "label": "Interface Language",
+          "description": "Choose your preferred language",
+          "options": {
+            "en": "English",
+            "zh": "中文"
+          }
+        },
+        "timezone": {
+          "label": "Timezone",
+          "description": "Set your local timezone",
+          "placeholder": "Select timezone"
+        }
+      },
+      "notifications": {
+        "email": {
+          "label": "Email Notifications",
+          "description": "Receive notifications via email",
+          "help": "You'll receive updates about your projects and account"
+        },
+        "push": {
+          "label": "Push Notifications",
+          "description": "Receive push notifications in your browser"
+        },
+        "projectUpdates": {
+          "label": "Project Updates",
+          "description": "Get notified about project status changes"
+        }
+      },
+      "privacy": {
+        "profileVisibility": {
+          "label": "Profile Visibility",
+          "description": "Who can see your profile",
+          "options": {
+            "public": "Public",
+            "private": "Private",
+            "friends": "Friends Only"
+          }
+        },
+        "showEmail": {
+          "label": "Show Email",
+          "description": "Display your email on your public profile"
+        }
+      },
+      "advanced": {
+        "developerMode": {
+          "label": "Developer Mode",
+          "description": "Enable advanced developer features"
+        },
+        "betaFeatures": {
+          "label": "Beta Features",
+          "description": "Try out new experimental features"
+        }
+      }
+    },
+    "llm": {
+      "providerName": "Model Provider Name",
+      "providerPlaceholder": "e.g. OpenAI, Anthropic, DeepSeek",
+      "baseUrl": "Base URL",
+      "baseUrlPlaceholder": "e.g. https://api.openai.com/v1",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Enter your API Key",
+      "models": "Model List",
+      "modelNamePlaceholder": "e.g. gpt-4, claude-3",
+      "tokenLimitPlaceholder": "Token Limit (optional)",
+      "addProvider": "Add Model Provider",
+      "editProvider": "Edit Model Provider",
+      "addModel": "Add Model",
+      "modelOrderHint": "Models are used in priority order. If the first fails, the next is automatically tried.",
+      "confirmDelete": "Are you sure you want to delete this model provider?",
+      "saveSuccess": "Model configuration saved",
+      "saveFailed": "Failed to save model configuration",
+      "hintAgent": "For Agent main flow. Models are tried top-to-bottom in order.",
+      "hintEdit": "For EditFile/code-editing flows. Models are tried top-to-bottom in order.",
+      "hintMini": "For small-model / context-compression helpers. Models are tried top-to-bottom in order."
+    },
+    "actions": {
+      "save": "Save Configuration",
+      "saving": "Saving..."
+    }
+  },
+  "common": {
+    "refresh": "Refresh",
+    "save": "Save",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "work": {
+    "nav": {
+      "chat": "Chat",
+      "preview": "Preview"
+    },
+    "header": {
+      "back": "Back to Dashboard",
+      "projectName": "Project Name",
+      "github": "GitHub",
+      "branch": "Branch Management",
+      "publish": "Publish"
+    },
+    "chat": {
+      "title": "Chat",
+      "placeholder": "Type your message...",
+      "send": "Send",
+      "stop": "Stop",
+      "uploadFile": "Upload file",
+      "configureRules": "Configure Rules",
+      "browserMode": "Browser Mode",
+      "stopConfirmTitle": "Confirm Stop?",
+      "stopConfirmDesc": "Stopping will interrupt the current task. Are you sure you want to stop?",
+      "contextUsage": "Context Usage",
+      "tokenUsage": {
+        "title": "Token Usage",
+        "used": "Used",
+        "contextTokens": "Context",
+        "preTokens": "System Preset",
+        "available": "Available",
+        "totalLimit": "Model Limit",
+        "usagePercent": "Usage"
+      },
+      "conversation": {
+        "select": "Select conversation",
+        "createNew": "Create New Conversation",
+        "edit": "Edit conversation"
+      },
+      "collapse": "Collapse chat",
+      "agentMessageItem": {
+        "through": {
+          "summary": "Deep Thinking"
+        },
+        "todolist": {
+          "summary": "Task List",
+          "empty": "No tasks"
+        },
+        "undo": {
+          "button": "Undo this action"
+        }
+      }
+    },
+    "preview": {
+      "title": "Preview",
+      "placeholder": "Preview will appear here",
+      "head": {
+        "app": "APP",
+        "code": "Code",
+        "database": "Database",
+        "config": "Config",
+        "devices": {
+          "desktop": "Desktop",
+          "tablet": "Tablet",
+          "phone": "Phone"
+        },
+        "urlPlaceholder": "/"
+      },
+      "config": {
+        "nav": {
+          "title": "Configurations",
+          "rules": "Rules File",
+          "envConfig": "Environment Config"
+        },
+        "rules": {
+          "title": "Rules Configuration",
+          "subtitle": "Maintain the rule script for system agents",
+          "placeholder": "Paste or write your rules here..."
+        },
+        "envConfig": {
+          "title": "Environment Config",
+          "subtitle": "Maintain key-value environment variables for this project",
+          "key": "Key",
+          "value": "Value",
+          "commented": "Commented",
+          "commentedLabel": "Comment out this variable",
+          "actions": "Actions",
+          "add": "Add Variable",
+          "reset": "Reset",
+          "keyPlaceholder": "Key, e.g. API_BASE_URL",
+          "valuePlaceholder": "Value, e.g. https://api.example.com"
+        }
+      },
+      "content": {
+        "app": {
+          "placeholder": "App preview will appear here",
+          "building": "Building Project",
+          "buildingDesc": "The project is being deployed, please wait..."
+        },
+        "code": {
+          "placeholder": "Code preview will appear here"
+        },
+        "database": {
+          "placeholder": "Database preview will appear here",
+          "catalogue": {
+            "databaseName": "Database",
+            "tables": "Tables"
+          },
+          "tabs": {
+            "construction": "Structure",
+            "data": "Data"
+          },
+          "actions": {
+            "addKey": "Add Key",
+            "insertData": "Insert Data"
+          },
+          "construction": {
+            "placeholder": "Table structure view coming soon",
+            "headers": {
+              "index": "Index",
+              "name": "Name",
+              "type": "Type",
+              "collation": "Collation",
+              "attributes": "Attributes",
+              "null": "Null",
+              "default": "Default",
+              "comment": "Comment",
+              "extra": "Extra",
+              "actions": "Actions"
+            },
+            "yes": "Yes",
+            "no": "No",
+            "edit": "Edit",
+            "delete": "Delete",
+            "deleteSelected": "Delete Selected ({count})"
+          },
+          "data": {
+            "placeholder": "Table data view coming soon",
+            "headers": {
+              "actions": "Actions"
+            },
+            "edit": "Edit",
+            "delete": "Delete",
+            "deleteSelected": "Delete Selected ({count})",
+            "totalRecords": "Total {count} records"
+          },
+          "tableControl": {
+            "tableName": "Table Name",
+            "tableNamePlaceholder": "Enter table name",
+            "cancel": "Cancel",
+            "save": "Save",
+            "fields": "Fields",
+            "addField": "Add Field",
+            "fieldNamePlaceholder": "Field name",
+            "selectType": "Select type",
+            "lengthPlaceholder": "Length",
+            "selectCollation": "Select collation",
+            "selectAttribute": "Select attribute",
+            "yes": "Yes",
+            "no": "No",
+            "selectDefault": "Select default",
+            "defaultPlaceholder": "Default value",
+            "selectExtra": "Select extra",
+            "commentPlaceholder": "Comment",
+            "headers": {
+              "name": "Name",
+              "type": "Type",
+              "length": "Length",
+              "collation": "Collation",
+              "attributes": "Attributes",
+              "null": "Null",
+              "default": "Default",
+              "extra": "Extra",
+              "comment": "Comment",
+              "actions": "Actions"
+            }
+          }
+        }
+      }
+    }
+  },
+  "pricing": {
+    "title": "Choose the plan that's right for you",
+    "subtitle": "Flexible pricing plans for every need",
+    "period_month": "month",
+    "period_custom": "Contact Us",
+    "per_month": "/mo",
+    "free_description": "Perfect for individuals trying out the platform",
+    "pro_description": "For professional developers and small teams",
+    "ultra_description": "For growing teams and businesses",
+    "ultimate_description": "For large teams and power users",
+    "enterprise_description": "Custom solutions tailored to your enterprise",
+    "most_popular": "Most Popular",
+    "get_started": "Get Started",
+    "contact_us": "Contact Us",
+    "current_plan": "Current Plan",
+    "feature_projects_1": "Up to 1 project",
+    "feature_projects_3": "Up to 3 projects",
+    "feature_projects_5": "Up to 5 projects",
+    "feature_projects_10": "Up to 10 projects",
+    "feature_unlimited_projects": "Unlimited projects",
+    "feature_credits_350k": "350K credits per month",
+    "feature_credits_7m": "7M credits per month",
+    "feature_credits_21m": "21M credits per month",
+    "feature_credits_150m": "150M credits per month",
+    "feature_credits_unlimited": "Unlimited credits",
+    "feature_unlimited_credits": "Unlimited credits usage",
+    "feature_basic_support": "Basic support",
+    "feature_priority_support": "Priority support",
+    "feature_advanced_ai": "Advanced AI features",
+    "feature_super_ai_experience": "Super AI features early access",
+    "feature_dedicated_support": "Dedicated support",
+    "feature_custom_solutions": "Custom solutions",
+    "feature_dedicated_account_manager": "Dedicated account manager",
+    "feature_sla_guarantee": "SLA guarantee",
+    "feature_on_premise_deployment": "On-premise deployment",
+    "feature_advanced_security": "Advanced security"
+  },
+  "pay": {
+    "subscribe": "Subscribe",
+    "buyCredits": "Buy Credits",
+    "perMonth": "per month",
+    "contactInfo": "Contact Information",
+    "paymentMethod": "Payment Method",
+    "card": "Card",
+    "alipay": "Alipay",
+    "wechat": "WeChat Pay",
+    "comingSoon": "Coming Soon",
+    "saveInfo": "Save my info for faster checkout",
+    "subscribeBtn": "Subscribe",
+    "payBtn": "Pay Now",
+    "processing": "Processing...",
+    "footer": "By subscribing, you authorize AutoProvider to charge you according to the terms until you cancel.",
+    "footerCredits": "By paying, you agree to AutoProvider's Terms of Service and Privacy Policy.",
+    "subtotal": "Subtotal",
+    "tax": "Tax",
+    "totalDue": "Total due today",
+    "productDesc": "Includes advanced features and credits"
+  },
+  "payment": {
+    "processing": "Processing payment result...",
+    "pleaseWait": "Please wait, verifying your payment status",
+    "success": "Payment Successful",
+    "successDesc": "Congratulations! Your payment was successful. Credits have been added to your account.",
+    "pending": "Awaiting Payment",
+    "pendingDesc": "Order is awaiting payment confirmation, please wait...",
+    "pendingHint": "If you've completed the payment, the status will update automatically",
+    "failed": "Payment Failed",
+    "failedDesc": "There was a problem with your payment. Please try again.",
+    "orderNo": "Order No",
+    "refresh": "Refresh Status",
+    "backToDashboard": "Back to Dashboard",
+    "retry": "Try Again",
+    "autoRedirect": "Redirecting in",
+    "seconds": "seconds"
+  },
+  "error": {
+    "page_not_found": "Page not found",
+    "page_not_found_desc": "The page you are looking for doesn’t exist or has been moved.",
+    "back_home": "Back to home"
+  }
+}

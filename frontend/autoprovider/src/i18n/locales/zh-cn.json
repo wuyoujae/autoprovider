@@ -1,0 +1,590 @@
+{
+  "nav": {
+    "changelog": "更新日志",
+    "contact": "联系我们",
+    "pricing": "定价",
+    "menu": "菜单",
+    "myProjects": "我的项目",
+    "pleaseLogin": "请登录"
+  },
+  "user": {
+    "name": "用户名"
+  },
+  "language": {
+    "zh": "中文",
+    "en": "English",
+    "title": "语言切换"
+  },
+  "platform": {
+    "name": "utoprovider"
+  },
+    "prompt": {
+    "projectType": {
+      "app": "移动应用",
+      "web": "WEB应用",
+      "desktop": "桌面应用"
+    },
+    "placeholder": "描述你想要构建的内容...",
+    "send": "发送",
+    "creating": "创建中...",
+    "clear": "清空",
+    "dropFile": "拖拽文件到这里上传",
+    "uploadedFiles": "已上传文件",
+    "projectType": {
+      "app": "移动应用",
+      "web": "WEB应用",
+      "desktop": "桌面应用"
+    },
+    "onlyWebSupported": "目前仅支持 Web 应用开发，如需优先体验，请联系我们"
+  },
+  "loading": {
+    "creating": "正在创建项目..."
+  },
+  "login": {
+    "title": "欢迎回来",
+    "subtitle": "登录您的账户",
+    "email": "邮箱",
+    "password": "密码",
+    "rememberMe": "记住我",
+    "forgotPassword": "忘记密码？",
+    "signIn": "登录",
+    "noAccount": "还没有账户？",
+    "signUp": "注册",
+    "termsText": "登录使用即表示您同意",
+    "terms": "服务条款",
+    "privacy": "隐私政策"
+  },
+  "register": {
+    "title": "创建账户",
+    "subtitle": "开始您的旅程",
+    "username": "用户名",
+    "email": "邮箱",
+    "password": "密码",
+    "confirmPassword": "确认密码",
+    "signUp": "注册",
+    "hasAccount": "已有账户？",
+    "signIn": "登录",
+    "termsText": "创建账户即表示您同意",
+    "terms": "服务条款",
+    "privacy": "隐私政策"
+  },
+  "dashboard": {
+    "nav": {
+      "projects": "项目",
+      "credits": "Token 用量",
+      "preferences": "偏好设置"
+    },
+    "user": {
+      "profile": "个人资料",
+      "logout": "退出登录",
+      "delete": "注销账号"
+    }
+  },
+  "project": {
+    "title": "我的项目",
+    "subtitle": "管理和查看您的所有项目",
+    "createNew": "创建新项目",
+    "createDescription": "点击创建一个新的项目",
+    "createNewProjectHint": "准备好开始创建您的新项目了吗？使用自然语言描述您想要构建的应用，让 AutoProvider 帮您实现！",
+    "edit": "编辑",
+    "delete": "删除",
+    "deleteConfirm": {
+      "title": "确认删除该项目？",
+      "description": "项目删除后将无法继续使用，您可以随时重新创建一个新项目。",
+      "confirm": "确认删除",
+      "cancel": "取消"
+    },
+    "deleteFailed": "删除项目失败，请稍后重试",
+    "deletePending": "请等待当前删除完成",
+    "status": {
+      "active": "运行中",
+      "building": "构建中",
+      "error": "错误",
+      "draft": "草稿"
+    },
+    "empty": {
+      "title": "还没有项目",
+      "description": "创建您的第一个项目，开始使用 AutoProvider 构建应用"
+    }
+  },
+  "credits": {
+    "title": "积分用量",
+    "subtitle": "管理您的订阅并跟踪积分使用情况",
+    "currentPlan": "当前套餐",
+    "remainingCredits": "剩余积分",
+    "upgradePlan": "升级套餐",
+    "creditHistory": "积分历史",
+    "filterBy": "筛选类型",
+    "all": "全部",
+    "income": "收入",
+    "expense": "支出",
+    "earned": "获得",
+    "used": "使用",
+    "expired": "过期",
+    "date": "日期",
+    "type": "类型",
+    "amount": "数量",
+    "description": "描述",
+    "exportCsv": "导出 CSV",
+    "selectDate": "选择日期",
+    "plans": {
+      "free": "免费版",
+      "pro": "专业版",
+      "ultra": "超级版",
+      "ultimate": "终极版"
+    },
+    "types": {
+      "income": "收入",
+      "expense": "支出",
+      "projectCreation": "项目创建",
+      "projectUpdate": "项目更新",
+      "deployment": "部署",
+      "purchase": "购买",
+      "refund": "退款",
+      "bonus": "奖励"
+    },
+    "upgradeDescriptions": {
+      "free": "升级到 Pro 版本，获得更多积分和功能",
+      "pro": "升级到 Ultra 版本，享受更高级的功能",
+      "ultra": "升级到 Ultimate 版本，获得无限制积分",
+      "ultimate": "您已拥有最高级别的套餐"
+    },
+    "upgradeButtons": {
+      "toPro": "升级到 Pro",
+      "toUltra": "升级到 Ultra",
+      "toUltimate": "升级到 Ultimate",
+      "maxLevel": "已是最高级别"
+    },
+    "empty": {
+      "title": "暂无积分历史",
+      "description": "您的积分使用历史将显示在这里"
+    },
+    "pagination": {
+      "info": "第 {current} / {total} 页，共 {count} 条",
+      "previous": "上一页",
+      "next": "下一页"
+    }
+  },
+  "tokens": {
+    "title": "Token 使用记录",
+    "subtitle": "查看和管理您的 Token 使用情况",
+    "historyTitle": "Token 使用历史",
+    "totalUsed": "总使用记录数",
+    "date": "日期",
+    "tokensUsed": "Token 使用量",
+    "reason": "使用原因",
+    "exportCsv": "导出 CSV",
+    "selectDate": "选择日期",
+    "allDates": "全部日期",
+    "loading": "加载中...",
+    "empty": {
+      "title": "暂无使用记录",
+      "description": "您的 Token 使用记录将显示在这里"
+    },
+    "pagination": {
+      "info": "第 {current} / {total} 页，共 {count} 条",
+      "previous": "上一页",
+      "next": "下一页"
+    }
+  },
+  "preferences": {
+    "title": "偏好设置",
+    "subtitle": "管理您的账户设置和偏好",
+    "search": {
+      "placeholder": "搜索设置...",
+      "noResults": "未找到结果",
+      "noResultsDescription": "请尝试调整您的搜索词"
+    },
+    "sections": {
+      "agentModels": "Agent 模型配置",
+      "editFileModels": "EditFile 模型配置",
+      "miniModels": "Mini 模型配置"
+    },
+    "items": {
+      "profile": {
+        "username": {
+          "label": "用户名",
+          "description": "您在平台上的唯一用户名",
+          "placeholder": "输入用户名"
+        },
+        "email": {
+          "label": "邮箱地址",
+          "description": "用于通知和登录的主要邮箱",
+          "placeholder": "输入邮箱地址"
+        },
+        "bio": {
+          "label": "个人简介",
+          "description": "介绍一下自己",
+          "placeholder": "写一段简短的介绍..."
+        }
+      },
+      "appearance": {
+        "theme": {
+          "label": "主题",
+          "description": "选择您喜欢的主题",
+          "options": {
+            "dark": "深色",
+            "light": "浅色",
+            "auto": "自动"
+          }
+        },
+        "fontSize": {
+          "label": "字体大小",
+          "description": "调整平台的文字大小",
+          "options": {
+            "small": "小",
+            "medium": "中",
+            "large": "大"
+          }
+        }
+      },
+      "language": {
+        "interface": {
+          "label": "界面语言",
+          "description": "选择您偏好的语言",
+          "options": {
+            "en": "English",
+            "zh": "中文"
+          }
+        },
+        "timezone": {
+          "label": "时区",
+          "description": "设置您的本地时区",
+          "placeholder": "选择时区"
+        }
+      },
+      "notifications": {
+        "email": {
+          "label": "邮件通知",
+          "description": "通过邮件接收通知",
+          "help": "您将收到有关项目和账户的更新"
+        },
+        "push": {
+          "label": "推送通知",
+          "description": "在浏览器中接收推送通知"
+        },
+        "projectUpdates": {
+          "label": "项目更新",
+          "description": "获取项目状态变化的通知"
+        }
+      },
+      "privacy": {
+        "profileVisibility": {
+          "label": "个人资料可见性",
+          "description": "谁可以查看您的个人资料",
+          "options": {
+            "public": "公开",
+            "private": "私密",
+            "friends": "仅好友"
+          }
+        },
+        "showEmail": {
+          "label": "显示邮箱",
+          "description": "在公开资料中显示您的邮箱"
+        }
+      },
+      "advanced": {
+        "developerMode": {
+          "label": "开发者模式",
+          "description": "启用高级开发者功能"
+        },
+        "betaFeatures": {
+          "label": "测试功能",
+          "description": "尝试新的实验性功能"
+        }
+      }
+    },
+    "llm": {
+      "providerName": "模型供应商名称",
+      "providerPlaceholder": "例如：OpenAI、Anthropic、DeepSeek",
+      "baseUrl": "Base URL",
+      "baseUrlPlaceholder": "例如：https://api.openai.com/v1",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "输入您的 API Key",
+      "models": "模型列表",
+      "modelNamePlaceholder": "例如：gpt-4、claude-3",
+      "tokenLimitPlaceholder": "Token 上限（可选）",
+      "addProvider": "添加模型供应商",
+      "editProvider": "编辑模型供应商",
+      "addModel": "添加模型",
+      "modelOrderHint": "模型按顺序优先调用，第一个模型失败后会自动尝试下一个",
+      "confirmDelete": "确定要删除这个模型供应商吗？",
+      "saveSuccess": "模型配置已保存",
+      "saveFailed": "保存模型配置失败，请稍后再试",
+      "hintAgent": "用于 Agent 主流程的大模型调用顺序配置，优先从上到下尝试。",
+      "hintEdit": "用于 EditFile 等代码编辑能力的大模型调用顺序配置，优先从上到下尝试。",
+      "hintMini": "用于小模型/上下文压缩等辅助场景的调用顺序配置，优先从上到下尝试。"
+    },
+    "actions": {
+      "save": "保存配置",
+      "saving": "保存中..."
+    }
+  },
+  "common": {
+    "refresh": "刷新",
+    "save": "保存",
+    "confirm": "确认",
+    "cancel": "取消",
+    "edit": "编辑",
+    "delete": "删除"
+  },
+  "work": {
+    "nav": {
+      "chat": "聊天",
+      "preview": "预览"
+    },
+    "header": {
+      "back": "返回 Dashboard",
+      "projectName": "项目名称",
+      "github": "GitHub",
+      "branch": "分支管理",
+      "publish": "发布"
+    },
+    "chat": {
+      "title": "聊天",
+      "placeholder": "输入您的消息...",
+      "send": "发送",
+      "stop": "停止",
+      "uploadFile": "上传文件",
+      "configureRules": "配置规则",
+      "browserMode": "浏览器模式",
+      "stopConfirmTitle": "确认停止？",
+      "stopConfirmDesc": "停止后当前正在进行的任务将被中断，您确定要停止吗？",
+      "contextUsage": "上下文使用量",
+      "tokenUsage": {
+        "title": "Token 使用情况",
+        "used": "已使用",
+        "contextTokens": "对话上下文",
+        "preTokens": "系统预设",
+        "available": "可用",
+        "totalLimit": "模型上限",
+        "usagePercent": "使用率"
+      },
+      "conversation": {
+        "select": "选择对话",
+        "createNew": "创建新对话",
+        "edit": "编辑对话"
+      },
+      "collapse": "折叠聊天",
+      "agentMessageItem": {
+        "through": {
+          "summary": "深度思考"
+        },
+        "todolist": {
+          "summary": "任务代办",
+          "empty": "暂无任务"
+        },
+        "undo": {
+          "button": "回撤此操作"
+        }
+      }
+    },
+    "preview": {
+      "title": "预览",
+      "placeholder": "预览内容将显示在这里",
+      "head": {
+        "app": "应用",
+        "code": "代码",
+        "database": "数据库",
+        "config": "配置",
+        "devices": {
+          "desktop": "桌面端",
+          "tablet": "平板端",
+          "phone": "移动端"
+        },
+        "urlPlaceholder": "/"
+      },
+      "config": {
+        "nav": {
+          "title": "配置项",
+          "rules": "规则文件",
+          "envConfig": "环境配置"
+        },
+        "rules": {
+          "title": "Rules 配置",
+          "subtitle": "维护系统 Agent 的规则脚本",
+          "placeholder": "在此粘贴或编写规则内容..."
+        },
+        "envConfig": {
+          "title": "环境配置",
+          "subtitle": "为当前项目维护环境变量键值对",
+          "key": "键",
+          "value": "值",
+          "commented": "注释",
+          "commentedLabel": "将此变量注释",
+          "actions": "操作",
+          "add": "新增环境配置",
+          "reset": "重置",
+          "keyPlaceholder": "键，例如 API_BASE_URL",
+          "valuePlaceholder": "值，例如 https://api.example.com"
+        }
+      },
+      "content": {
+        "app": {
+          "placeholder": "应用预览将显示在这里",
+          "building": "正在构建项目中",
+          "buildingDesc": "项目正在部署中，请稍候..."
+        },
+        "code": {
+          "placeholder": "代码预览将显示在这里"
+        },
+        "database": {
+          "placeholder": "数据库预览将显示在这里",
+          "catalogue": {
+            "databaseName": "数据库",
+            "tables": "表"
+          },
+          "tabs": {
+            "construction": "结构",
+            "data": "数据"
+          },
+          "actions": {
+            "addKey": "新增键",
+            "insertData": "插入数据"
+          },
+          "construction": {
+            "placeholder": "表结构视图即将推出",
+            "headers": {
+              "index": "序号",
+              "name": "名字",
+              "type": "类型",
+              "collation": "排序规则",
+              "attributes": "属性",
+              "null": "可为空",
+              "default": "默认值",
+              "comment": "注释",
+              "extra": "额外",
+              "actions": "操作"
+            },
+            "yes": "是",
+            "no": "否",
+            "edit": "修改",
+            "delete": "删除",
+            "deleteSelected": "删除选中 ({count})"
+          },
+          "data": {
+            "placeholder": "表数据视图即将推出",
+            "headers": {
+              "actions": "操作"
+            },
+            "edit": "修改",
+            "delete": "删除",
+            "deleteSelected": "删除选中 ({count})",
+            "totalRecords": "共 {count} 条记录"
+          },
+          "tableControl": {
+            "tableName": "表名",
+            "tableNamePlaceholder": "请输入表名",
+            "cancel": "取消",
+            "save": "保存",
+            "fields": "字段列表",
+            "addField": "添加字段",
+            "fieldNamePlaceholder": "字段名",
+            "selectType": "选择类型",
+            "lengthPlaceholder": "长度",
+            "selectCollation": "选择排序规则",
+            "selectAttribute": "选择属性",
+            "yes": "是",
+            "no": "否",
+            "selectDefault": "选择默认值",
+            "defaultPlaceholder": "默认值",
+            "selectExtra": "选择额外",
+            "commentPlaceholder": "注释",
+            "headers": {
+              "name": "名称",
+              "type": "类型",
+              "length": "长度",
+              "collation": "排序规则",
+              "attributes": "属性",
+              "null": "可为空",
+              "default": "默认值",
+              "extra": "额外",
+              "comment": "注释",
+              "actions": "操作"
+            }
+          }
+        }
+      }
+    }
+  },
+  "pricing": {
+    "title": "选择适合您的套餐",
+    "subtitle": "灵活的定价方案，满足不同需求",
+    "period_month": "月",
+    "period_custom": "联系我们",
+    "per_month": "/月",
+    "free_description": "适合个人用户尝试平台功能",
+    "pro_description": "适合专业开发者和小型团队",
+    "ultra_description": "适合成长中的团队和企业",
+    "ultimate_description": "适合大型团队和高频用户",
+    "enterprise_description": "为您的企业定制专属解决方案",
+    "most_popular": "最受欢迎",
+    "get_started": "开始使用",
+    "contact_us": "联系我们",
+    "current_plan": "当前套餐",
+    "feature_projects_1": "最多 1 个项目",
+    "feature_projects_3": "最多 3 个项目",
+    "feature_projects_5": "最多 5 个项目",
+    "feature_projects_10": "最多 10 个项目",
+    "feature_unlimited_projects": "无限项目",
+    "feature_credits_350k": "每月 35 万积分",
+    "feature_credits_7m": "每月 700 万积分",
+    "feature_credits_21m": "每月 2100 万积分",
+    "feature_credits_150m": "每月 1.5 亿积分",
+    "feature_credits_unlimited": "无限积分",
+    "feature_unlimited_credits": "无限积分使用",
+    "feature_basic_support": "基础支持",
+    "feature_priority_support": "优先支持",
+    "feature_advanced_ai": "高级 AI 功能",
+    "feature_super_ai_experience": "超级 AI 功能优先体验",
+    "feature_dedicated_support": "专属支持",
+    "feature_custom_solutions": "定制解决方案",
+    "feature_dedicated_account_manager": "专属客户经理",
+    "feature_sla_guarantee": "SLA 保障",
+    "feature_on_premise_deployment": "私有化部署",
+    "feature_advanced_security": "高级安全保障"
+  },
+  "pay": {
+    "subscribe": "订阅",
+    "buyCredits": "购买积分",
+    "perMonth": "每月",
+    "contactInfo": "联系信息",
+    "paymentMethod": "支付方式",
+    "card": "银行卡",
+    "alipay": "支付宝",
+    "wechat": "微信支付",
+    "comingSoon": "即将开放",
+    "saveInfo": "保存我的信息，以便更快结账",
+    "subscribeBtn": "订阅",
+    "payBtn": "立即支付",
+    "processing": "处理中...",
+    "footer": "订阅即表示您授权 AutoProvider 根据条款向您收费，直至您取消订阅。",
+    "footerCredits": "支付即表示您同意 AutoProvider 的服务条款和隐私政策。",
+    "subtotal": "小计",
+    "tax": "税",
+    "totalDue": "今日应付合计",
+    "productDesc": "包含更多高级功能和积分"
+  },
+  "payment": {
+    "processing": "正在处理支付结果...",
+    "pleaseWait": "请稍候，正在验证您的支付状态",
+    "success": "支付成功",
+    "successDesc": "恭喜您，订单支付成功！积分已充值到您的账户。",
+    "pending": "等待支付",
+    "pendingDesc": "订单正在等待支付确认，请稍候...",
+    "pendingHint": "如果您已完成支付，系统将自动更新状态",
+    "failed": "支付失败",
+    "failedDesc": "支付过程中出现问题，请重试。",
+    "orderNo": "订单号",
+    "refresh": "刷新状态",
+    "backToDashboard": "返回控制台",
+    "retry": "重新选择",
+    "autoRedirect": "页面将在",
+    "seconds": "秒后自动跳转"
+  },
+  "error": {
+    "page_not_found": "页面不存在",
+    "page_not_found_desc": "您访问的页面不存在或已被移动。",
+    "back_home": "返回首页"
+  }
+}
