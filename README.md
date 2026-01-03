@@ -82,6 +82,36 @@ npm run dev
 
 默认访问：`http://localhost:5173`
 
+### 4) 数据库配置
+
+在 `backend/autoprovider/.env` 中配置（示例）：
+
+```env
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=autoprovider_open
+
+# 启动时自动初始化数据库（创建 DB + 执行 db/db.sql）
+# - 默认：开发环境开启；生产环境默认关闭
+AUTO_INIT_DB=true
+```
+
+> 初始化逻辑：服务启动后会创建数据库（若不存在）并执行 `backend/autoprovider/db/db.sql` 进行建表/建索引。
+
+### 5) 模型 API 配置
+
+登录后打开前端的/dashboard/preferences 页面配置
+
+[](opensource/image2.png)
+
+### 6) dokploy 配置（可选）
+
+如果你需要直接部署到公网，那么你可以部署你自己的或者使用 dokploy 云服务，填入你自己的信息到.env 中
+
+如果你只需要本地开发则不需要填写
+
 ## 配置说明
 
 ### 前端环境变量（可选）
@@ -106,24 +136,6 @@ VITE_PYTHON_API_VERSION=/api/v1
 - **部署/容器（可选）**：`DOKPLOY_BASE_URL` / `DOKPLOY_API_KEY`、`DOCKER_HOST` / `DOCKER_SOCKET` 等
 
 数据库结构可参考并导入：`backend/autoprovider/db/db.sql`
-
-#### MySQL 配置示例（推荐）
-
-在 `backend/autoprovider/.env` 中配置（示例）：
-
-```env
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME=autoprovider_open
-
-# 启动时自动初始化数据库（创建 DB + 执行 db/db.sql）
-# - 默认：开发环境开启；生产环境默认关闭
-AUTO_INIT_DB=true
-```
-
-> 初始化逻辑：服务启动后会创建数据库（若不存在）并执行 `backend/autoprovider/db/db.sql` 进行建表/建索引。
 
 ## 安全与密钥（开源必读）
 
