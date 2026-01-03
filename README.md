@@ -3,7 +3,7 @@
 介绍：Autoprovider 是平台 Vercel,Orchids.app,Lovable,Devin 的开源替代。是一个全栈应用开发 Agent，支持自定义模型使用，增强上下文管理等配置。支持同时构建多端应用，例如 Web，Android，iOS，桌面端等。
 
 <p align="center">
-  <img src="frontend/autoprovider/src/static/logo.png" alt="AutoProvider Logo" width="120" />
+  <img src="frontend/autoprovider/src/static/logo.png" alt="AutoProvider Logo" width="120" style="background-color: #000;" />
 </p>
 
 ![AutoProvider Screenshot](image.png)
