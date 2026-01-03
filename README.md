@@ -8,11 +8,11 @@
 
 ![AutoProvider Screenshot](image.png)
 
-仓库是包含 **前端（Vite + Vue 3）**、**后端（Node.js + Express）** 与 **文件解析服务（Python + Flask）** 的单仓项目，用于提供项目/会话管理、模型配置与文件上传解析等能力。
+本仓库包含 **前端（Vite + Vue 3）**、**后端（Node.js + Express）** 与 **文件解析服务（Python + Flask）** 的单仓项目，用于提供项目/会话管理、模型配置与文件上传解析等能力。
 
-> 提示：本仓库用于开源发布，务必按下文「安全与密钥」配置
+> ⚠️ 提示：本仓库用于开源发布，务必按下文「安全与密钥」配置
 
-## 后续开发目标
+## 🧭 后续开发目标
 
 - [√] 完成 nextjs 前端全栈项目开发
 - [ ] 完成 python 后端技术栈的支持
@@ -21,21 +21,21 @@
 - [ ] 完成 electron 桌面端开发支持
 - [ ] 完成 nodejs 后端技术栈的支持
 
-> 如果你有更好的需求和问题，请提 Issue。
+> 💡 如果你有更好的需求和问题，请提 Issue。
 
-## 功能概览
+## ✨ 功能概览
 
 - **前端 Web UI**：项目创建/会话交互/文件上传与解析状态展示
 - **后端 API**（`/api/v1`）：用户、项目、会话、规则、系统信息、更新日志、模型配置等模块
 - **文件上传解析**：文档解析（PDF/DOCX/PPT 等）+ 图片识别（视觉模型）+ 结果入库
 
-## 技术栈
+## 🧰 技术栈
 
 - **Frontend**：Vue 3、Vite、TypeScript、TailwindCSS、Pinia
 - **Backend**：Node.js、Express、MySQL、Redis
 - **Parser Service**：Python 3.8+、Flask
 
-## 目录结构
+## 🗂️ 目录结构
 
 ```text
 opensource/
@@ -44,7 +44,7 @@ opensource/
   backend/autoprovider/utils/fileparse/ # Python 文件解析服务（Flask）
 ```
 
-## 快速开始（本地开发）
+## 🚀 快速开始（本地开发）
 
 ### 0) 前置依赖
 
@@ -82,7 +82,7 @@ npm run dev
 
 默认访问：`http://localhost:5173`
 
-### 4) 数据库配置
+### 4) 数据库配置 🗄️
 
 在 `backend/autoprovider/.env` 中配置（示例）：
 
@@ -100,19 +100,19 @@ AUTO_INIT_DB=true
 
 > 初始化逻辑：服务启动后会创建数据库（若不存在）并执行 `backend/autoprovider/db/db.sql` 进行建表/建索引。
 
-### 5) 模型 API 配置
+### 5) 模型 API 配置 🤖
 
-登录后打开前端的/dashboard/preferences 页面配置
+登录后打开前端的 `/dashboard/preferences` 页面配置
 
-[](opensource/image2.png)
+![Preferences](image2.png)
 
-### 6) dokploy 配置（可选）
+### 6) Dokploy 配置（可选）☁️
 
-如果你需要直接部署到公网，那么你可以部署你自己的或者使用 dokploy 云服务，填入你自己的信息到.env 中
+如果你需要直接部署到公网，那么你可以部署你自己的或者使用 dokploy 云服务，填入你自己的信息到 `.env` 中。
 
-如果你只需要本地开发则不需要填写
+如果你只需要本地开发则不需要填写。
 
-## 配置说明
+## ⚙️ 配置说明
 
 ### 前端环境变量（可选）
 
@@ -137,7 +137,7 @@ VITE_PYTHON_API_VERSION=/api/v1
 
 数据库结构可参考并导入：`backend/autoprovider/db/db.sql`
 
-## 安全与密钥（开源必读）
+## 🔒 安全与密钥（开源必读）
 
 - **不要提交任何密钥/密码**：包括 LLM API Key、数据库密码、对象存储密钥等。
 - 本仓库已在顶层 `.gitignore` 中忽略以下文件（用于避免把敏感信息提交到仓库）：
@@ -145,12 +145,12 @@ VITE_PYTHON_API_VERSION=/api/v1
   - `backend/autoprovider/config/runtime-config.json`（运行态配置，可能含密码）
 - 如果你曾经把密钥提交到 Git：请**立刻轮换密钥**，并清理 Git 历史（仅删除文件不等于安全）。
 
-## 常见问题
+## ❓ 常见问题
 
 - **前端“发送/创建项目”按钮不可用**：通常是文件仍在上传/解析中或存在解析失败文件（详见 `frontend/autoprovider/QUICK_START.md`）。
 - **上传解析失败**：确认 Python 服务已启动、前端配置了正确的 Python API 地址，并检查服务端日志。
 
-## 贡献
+## 🤝 贡献
 
 欢迎提交 Issue / PR。建议在 PR 描述中包含：
 
@@ -158,6 +158,6 @@ VITE_PYTHON_API_VERSION=/api/v1
 - 复现步骤（如修复 Bug）
 - 截图/日志（如涉及 UI/接口）
 
-## License
+## 📄 License
 
 本项目采用 **GNU AGPLv3** 开源协议，详见 `LICENSE`。
