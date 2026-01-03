@@ -1,8 +1,27 @@
-# AutoProvider（开源版）
+# AutoProvider
 
-一个包含 **前端（Vite + Vue 3）**、**后端（Node.js + Express）** 与 **文件解析服务（Python + Flask）** 的单仓项目，用于提供项目/会话管理、模型配置与文件上传解析等能力。
+介绍：Autoprovider 是平台 Vercel,Orchids.app,Lovable,Devin 的开源替代。是一个全栈应用开发 Agent，支持自定义模型使用，增强上下文管理等配置。支持同时构建多端应用，例如 Web，Android，iOS，桌面端等。
 
-> 提示：本仓库用于开源发布，务必按下文「安全与密钥」配置，避免把 API Key/数据库密码提交到 Git 历史中。
+<p align="center">
+  <img src="frontend/autoprovider/src/static/logo.png" alt="AutoProvider Logo" width="120" />
+</p>
+
+![AutoProvider Screenshot](image.png)
+
+仓库是包含 **前端（Vite + Vue 3）**、**后端（Node.js + Express）** 与 **文件解析服务（Python + Flask）** 的单仓项目，用于提供项目/会话管理、模型配置与文件上传解析等能力。
+
+> 提示：本仓库用于开源发布，务必按下文「安全与密钥」配置
+
+## 后续开发目标
+
+- [√] 完成 nextjs 前端全栈项目开发
+- [ ] 完成 python 后端技术栈的支持
+- [ ] 完成 java 后端技术栈的支持
+- [ ] 完成 expo 移动端开发支持
+- [ ] 完成 electron 桌面端开发支持
+- [ ] 完成 nodejs 后端技术栈的支持
+
+> 如果你有更好的需求和问题，请提 Issue。
 
 ## 功能概览
 
@@ -87,6 +106,24 @@ VITE_PYTHON_API_VERSION=/api/v1
 - **部署/容器（可选）**：`DOKPLOY_BASE_URL` / `DOKPLOY_API_KEY`、`DOCKER_HOST` / `DOCKER_SOCKET` 等
 
 数据库结构可参考并导入：`backend/autoprovider/db/db.sql`
+
+#### MySQL 配置示例（推荐）
+
+在 `backend/autoprovider/.env` 中配置（示例）：
+
+```env
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=autoprovider_open
+
+# 启动时自动初始化数据库（创建 DB + 执行 db/db.sql）
+# - 默认：开发环境开启；生产环境默认关闭
+AUTO_INIT_DB=true
+```
+
+> 初始化逻辑：服务启动后会创建数据库（若不存在）并执行 `backend/autoprovider/db/db.sql` 进行建表/建索引。
 
 ## 安全与密钥（开源必读）
 

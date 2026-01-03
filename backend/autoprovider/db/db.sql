@@ -36,56 +36,6 @@ create index idx_changelog_status_date
 create index idx_changelog_version
     on changelog (version);
 
-create table llm_model_config
-(
-    id          int auto_increment comment '自增主键'
-        primary key,
-    model_type  varchar(20)                        not null comment '模型用途类型：agent/editfile',
-    provider    varchar(100)                       not null comment '模型供应商名称',
-    base_url    varchar(500)                       not null comment 'API Base URL',
-    api_key     varchar(500)                       not null comment 'API Key',
-    model       varchar(200)                       not null comment '模型名称',
-    token_limit int                                null comment 'Token 上限（可选）',
-    order_no    int          default 0             null comment '优先级顺序（越小优先级越高）',
-    status      tinyint      default 0             null comment '状态：0-启用，1-删除',
-    create_time datetime     default CURRENT_TIMESTAMP null comment '创建时间',
-    update_time datetime     default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间'
-)
-    comment 'LLM 模型配置表' collate = utf8mb4_unicode_ci;
-
-create index idx_llm_model_type_order
-    on llm_model_config (model_type, order_no, status)
-    comment '按类型和顺序查询';
-
-create index idx_changelog_status_date
-    on changelog (status, release_date);
-
-create index idx_changelog_version
-    on changelog (version);
-
-create table token_usage_history
-(
-    record_id     varchar(50)                        not null comment '记录ID，由系统生成唯一标识'
-        primary key,
-    user_id       varchar(50)                        not null comment '用户ID，来源于user_info表的user_id',
-    tokens_used  int                                not null comment '本次消耗的token数量（正整数）',
-    usage_reason varchar(200)                       not null comment '使用原因描述',
-    create_time   datetime default CURRENT_TIMESTAMP null comment '记录创建时间'
-)
-    comment 'Token 使用历史表' collate = utf8mb4_unicode_ci;
-
-create index idx_token_usage_time
-    on token_usage_history (create_time)
-    comment '创建时间索引用于时间排序';
-
-create index idx_token_usage_user_id
-    on token_usage_history (user_id)
-    comment '用户ID索引用于按用户查询记录';
-
-create index idx_token_usage_user_time
-    on token_usage_history (user_id, create_time)
-    comment '联合索引，按用户和时间查询';
-
 create table dialogue_record
 (
     dialogue_id       varchar(50)                        not null comment '对话ID，由系统生成唯一标识'
@@ -129,6 +79,27 @@ create index idx_session_index
 create index idx_session_status
     on dialogue_record (dialogue_status)
     comment '联合索引，按会话和状态查询';
+
+create table llm_model_config
+(
+    id          int auto_increment comment '自增主键'
+        primary key,
+    model_type  varchar(20)                        not null comment '模型用途类型：agent/editfile',
+    provider    varchar(100)                       not null comment '模型供应商名称',
+    base_url    varchar(500)                       not null comment 'API Base URL',
+    api_key     text                               not null comment 'API Key',
+    model       varchar(200)                       not null comment '模型名称',
+    token_limit int                                null comment 'Token 上限（可选）',
+    order_no    int      default 0                 null comment '优先级顺序（越小优先级越高）',
+    status      tinyint  default 0                 null comment '状态：0-启用，1-删除',
+    create_time datetime default CURRENT_TIMESTAMP null comment '创建时间',
+    update_time datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间'
+)
+    comment 'LLM 模型配置表' collate = utf8mb4_unicode_ci;
+
+create index idx_llm_model_type_order
+    on llm_model_config (model_type, order_no, status)
+    comment '按类型和顺序查询';
 
 create table mini_model_message
 (
@@ -448,14 +419,37 @@ create index idx_todolist_status
     on todolist (todolist_status)
     comment '待办列表状态索引，用于状态筛选';
 
+create table token_usage_history
+(
+    record_id    varchar(50)                        not null comment '记录ID，由系统生成唯一标识'
+        primary key,
+    user_id      varchar(50)                        not null comment '用户ID，来源于user_info表的user_id',
+    tokens_used  int                                not null comment '本次消耗的token数量（正整数）',
+    usage_reason varchar(200)                       not null comment '使用原因描述',
+    create_time  datetime default CURRENT_TIMESTAMP null comment '记录创建时间'
+)
+    comment 'Token 使用历史表' collate = utf8mb4_unicode_ci;
+
+create index idx_token_usage_time
+    on token_usage_history (create_time)
+    comment '创建时间索引用于时间排序';
+
+create index idx_token_usage_user_id
+    on token_usage_history (user_id)
+    comment '用户ID索引用于按用户查询记录';
+
+create index idx_token_usage_user_time
+    on token_usage_history (user_id, create_time)
+    comment '联合索引，按用户和时间查询';
+
 create table user_info
 (
-    user_id     varchar(50)                                                         not null comment '用户ID'
+    user_id     varchar(50)                        not null comment '用户ID'
         primary key,
-    account     varchar(100)                                                        not null comment '账号',
-    username    varchar(100)                                                        not null comment '用户名',
-    create_time datetime                                  default CURRENT_TIMESTAMP null comment '创建时间',
-    status      int                                       default 0                 null comment '账号状态，0是正常使用，1是已注销',
+    account     varchar(100)                       not null comment '账号',
+    username    varchar(100)                       not null comment '用户名',
+    create_time datetime default CURRENT_TIMESTAMP null comment '创建时间',
+    status      int      default 0                 null comment '账号状态，0是正常使用，1是已注销',
     constraint uk_account
         unique (account)
 )

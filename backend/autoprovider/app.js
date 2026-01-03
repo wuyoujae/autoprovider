@@ -54,6 +54,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const router = require("./router");
+const { bootstrapMySQL, shouldAutoInitDb } = require("./utils/dbBootstrap");
 const getFilesTree = require("./utils/AIfunction/getFilesTree");
 const createFile = require("./utils/AIfunction/createFile");
 const editFile = require("./utils/AIfunction/editFile");
@@ -71,4 +72,21 @@ app.use("/api/v1", router);
 
 app.listen(3019, () => {
   console.log("Server is running on port 3019");
+
+  // 启动后自动初始化数据库（创建 DB 并执行 db/db.sql）
+  // - 默认：开发环境开启，生产环境关闭（除非 AUTO_INIT_DB=true）
+  // - 说明：仅用于本服务的 MySQL schema 初始化，不会创建 Docker 容器
+  if (shouldAutoInitDb()) {
+    bootstrapMySQL()
+      .then((r) => {
+        console.log(
+          `[DB Bootstrap] ✅ database=${r.database} statements=${r.statements} executed=${r.executed} skipped=${r.skipped}`
+        );
+      })
+      .catch((err) => {
+        console.error("[DB Bootstrap] ❌ 初始化失败:", err?.message || err);
+      });
+  } else {
+    console.log("[DB Bootstrap] ℹ️ AUTO_INIT_DB disabled");
+  }
 });
