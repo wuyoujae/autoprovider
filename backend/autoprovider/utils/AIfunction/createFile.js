@@ -115,9 +115,9 @@ async function createFile(payload = {}, infoObject = {}) {
       };
     }
 
-    // 从 payload 中获取参数（支持新旧两种格式）
-    const files = payload?.files; // 新格式：[{file_path, content}]
-    const fileNames = payload?.file_names; // 旧格式：["/path/to/file"]
+    // 从 payload 中获取参数（支持多种格式）
+    let files = payload?.files; // 新格式：[{file_path, content}]
+    let fileNames = payload?.file_names; // 旧格式：["/path/to/file"]
 
     // 容错处理：如果 files 是字符串，尝试 JSON.parse
     let parsedFiles = files;
@@ -126,13 +126,41 @@ async function createFile(payload = {}, infoObject = {}) {
         parsedFiles = JSON.parse(files);
         console.log("[createFile] 已自动解析字符串形式的 files 数组");
       } catch (parseError) {
-        return {
-          status: 1,
-          message: "createfile fail",
-          data: {
-            error: "files 参数格式错误，无法解析为数组",
-          },
-        };
+        // 如果解析失败，可能是单个文件路径字符串
+        parsedFiles = null;
+      }
+    }
+
+    // 兼容性处理：支持多种参数格式
+    // 格式1: { file_path: "/path", content: "..." } - 单个文件对象
+    // 格式2: { path: "/path", content: "..." } - path 别名
+    // 格式3: { file_name: "/path" } - 单个路径
+    // 格式4: { fileName: "/path" } - camelCase 格式
+    // 格式5: { filePath: "/path", content: "..." } - camelCase 格式
+    if (!parsedFiles && !fileNames) {
+      // 尝试从单个参数构建 files 数组
+      const singleFilePath =
+        payload?.file_path ||
+        payload?.filePath ||
+        payload?.path ||
+        payload?.file_name ||
+        payload?.fileName;
+
+      if (singleFilePath && typeof singleFilePath === "string") {
+        const content = payload?.content || "";
+        parsedFiles = [{ file_path: singleFilePath, content }];
+        console.log("[createFile] 已从单个参数构建 files 数组:", singleFilePath);
+      }
+
+      // 尝试 file_names 的别名
+      const altFileNames =
+        payload?.fileNames ||
+        payload?.paths ||
+        payload?.file_paths ||
+        payload?.filePaths;
+      if (altFileNames && Array.isArray(altFileNames)) {
+        fileNames = altFileNames;
+        console.log("[createFile] 使用别名参数 fileNames/paths");
       }
     }
 
@@ -156,7 +184,9 @@ async function createFile(payload = {}, infoObject = {}) {
     // 处理新格式：files 数组（带内容）
     if (hasFiles) {
       for (const fileObj of parsedFiles) {
-        const rawPath = fileObj?.file_path;
+        // 兼容多种字段名：file_path, filePath, path
+        const rawPath =
+          fileObj?.file_path || fileObj?.filePath || fileObj?.path;
         const content = fileObj?.content || "";
 
         if (!rawPath || typeof rawPath !== "string") {

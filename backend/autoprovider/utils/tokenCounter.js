@@ -8,6 +8,13 @@
 
 const { encode, decode, encodeChat } = require("gpt-tokenizer");
 
+// gpt-tokenizer 的 encodeChat 在未绑定模型时需要显式传入 model
+// 默认使用 GPT-4（cl100k_base）口径；如需自定义可通过环境变量覆盖
+const DEFAULT_CHAT_TOKEN_MODEL =
+  process.env.TOKENIZER_MODEL ||
+  process.env.LLM_TOKENIZER_MODEL ||
+  "gpt-4";
+
 /**
  * 计算字符串的 token 数量
  * @param {string} str - 要计算的字符串
@@ -28,14 +35,15 @@ function countTokens(str) {
 /**
  * 计算消息数组的 token 数量（适用于 chat completion 格式）
  * @param {Array<{role: string, content: string}>} messages - 消息数组
+ * @param {string} [modelName] - tokenizer 使用的模型名（可选）
  * @returns {number} token 数量
  */
-function countMessagesTokens(messages) {
+function countMessagesTokens(messages, modelName = DEFAULT_CHAT_TOKEN_MODEL) {
   if (!messages || !Array.isArray(messages)) return 0;
   try {
     // 使用 encodeChat 更准确地计算 chat 格式的 token
     // 它会考虑消息格式的额外 token（如 <|im_start|> 等）
-    const tokens = encodeChat(messages);
+    const tokens = encodeChat(messages, modelName);
     return tokens.length;
   } catch (error) {
     console.error("[tokenCounter] encodeChat error:", error.message);

@@ -1,5 +1,8 @@
 const fs = require("fs/promises");
 const path = require("path");
+const net = require("net");
+const { spawn, exec } = require("child_process");
+const { promisify } = require("util");
 const { v4: uuidv4 } = require("uuid");
 const pool = require("../../db");
 const recordErrorLog = require("../recordErrorLog");
@@ -8,18 +11,184 @@ const bashOperation = require("../AIfunction/bashOperation");
 const getProjectsBasePath = require("../getProjectsBasePath");
 const DokployClient = require("../dokploy/client");
 const { deployProject } = require("./deploy/deployProject");
-const { getDbContainerId } = require("./ssh2/getDbContainerId");
-const { initDatabase } = require("./database/initDatabase");
-const MYSQL_DEFAULT_USER = "autoprovider";
-const MYSQL_DEFAULT_PASSWORD = "123456";
+
+// 本地 MySQL 配置（从环境变量读取，与 db.js 保持一致）
+const MYSQL_HOST = process.env.DB_HOST || "localhost";
+const MYSQL_PORT = process.env.DB_PORT || "3306";
+const MYSQL_USER = process.env.DB_USER || "root";
+const MYSQL_PASSWORD = process.env.DB_PASSWORD || "123456";
 
 // 配置常量（可以根据需要修改）
-const TEMPLATE_PATH = path.join(__dirname, "../../template/app"); // template文件夹路径
+const TEMPLATE_PATH = path.join(__dirname, "../../template/my-app"); // template文件夹路径（开源版：my-app）
 // 项目存放的基础路径：优先环境变量 PROJECTS_BASE_PATH，否则使用 getProjectsBasePath()
 const PROJECTS_BASE_PATH =
   process.env.PROJECTS_BASE_PATH && process.env.PROJECTS_BASE_PATH.trim()
     ? process.env.PROJECTS_BASE_PATH.trim()
     : getProjectsBasePath();
+
+const execAsync = promisify(exec);
+
+// 本地 dev server 进程注册表（按 projectId 复用）
+// value: { proc: ChildProcess, port: number, url: string, startedAt: number }
+const devServerRegistry = new Map();
+
+const hasDokployConfig = () => {
+  return !!(process.env.DOKPLOY_BASE_URL && process.env.DOKPLOY_API_KEY);
+};
+
+const isProcessAlive = (proc) => {
+  return !!proc && proc.exitCode === null && !proc.killed;
+};
+
+// 更可靠的端口选择：
+// - 优先尝试指定端口（在 0.0.0.0 上探测，和 Next 实际绑定一致）
+// - 如果不可用，使用系统分配的随机空闲端口
+const getAvailablePort = async (preferredPort = 3000) => {
+  const canListen = (port) =>
+    new Promise((resolve) => {
+      const server = net.createServer();
+      server.once("error", () => resolve(false));
+      server.once("listening", () => {
+        server.close(() => resolve(true));
+      });
+      server.listen(port, "0.0.0.0");
+    });
+
+  if (preferredPort && (await canListen(preferredPort))) {
+    return preferredPort;
+  }
+
+  // 让系统分配一个空闲端口
+  return await new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once("error", reject);
+    server.listen(0, "0.0.0.0", () => {
+      const addr = server.address();
+      const port = typeof addr === "object" && addr ? addr.port : null;
+      server.close(() => resolve(port));
+    });
+  });
+};
+
+const waitForPortOpen = async (port, host = "127.0.0.1", timeoutMs = 20000) => {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const ok = await new Promise((resolve) => {
+      const socket = new net.Socket();
+      const onDone = (result) => {
+        try {
+          socket.destroy();
+        } catch (e) {
+          // ignore
+        }
+        resolve(result);
+      };
+      socket.setTimeout(800);
+      socket.once("connect", () => onDone(true));
+      socket.once("timeout", () => onDone(false));
+      socket.once("error", () => onDone(false));
+      socket.connect(port, host);
+    });
+    if (ok) return true;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return false;
+};
+
+const startOrReuseLocalDevServer = async ({ projectId, projectPath }) => {
+  const existing = devServerRegistry.get(projectId);
+  if (existing && isProcessAlive(existing.proc)) {
+    return { url: existing.url, port: existing.port, reused: true };
+  }
+
+  // Next 默认端口 3000（模板为 next dev）；如果被占用则自动分配随机可用端口
+  const port = await getAvailablePort(3000);
+  if (!port) throw new Error("无法找到可用端口启动本地 dev server");
+
+  const previewHost = process.env.DEV_PREVIEW_HOST || "localhost";
+  const url = `http://${previewHost}:${port}`;
+
+  const env = {
+    ...process.env,
+    PORT: String(port),
+    HOSTNAME: process.env.HOSTNAME || "0.0.0.0",
+  };
+
+  // 启动 dev server（后台常驻）
+  const proc = spawn(
+    "npm",
+    ["run", "dev", "--", "-p", String(port), "-H", "0.0.0.0"],
+    {
+      cwd: projectPath,
+      env,
+      shell: true, // Windows 兼容
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    }
+  );
+
+  const prefix = `[initNewProject:local-dev:${projectId}]`;
+  proc.stdout?.on("data", (buf) =>
+    console.log(prefix, buf.toString().trimEnd())
+  );
+  proc.stderr?.on("data", (buf) =>
+    console.log(prefix, buf.toString().trimEnd())
+  );
+  proc.on("exit", (code, signal) => {
+    console.log(`${prefix} exited`, { code, signal });
+    const cur = devServerRegistry.get(projectId);
+    if (cur && cur.proc === proc) devServerRegistry.delete(projectId);
+  });
+
+  const ready = await waitForPortOpen(port, "127.0.0.1", 20000);
+  if (!ready) {
+    if (!isProcessAlive(proc)) {
+      throw new Error("本地 dev server 启动失败（进程已退出）");
+    }
+    throw new Error("本地 dev server 启动超时（端口未就绪）");
+  }
+
+  devServerRegistry.set(projectId, { proc, port, url, startedAt: Date.now() });
+  return { url, port, reused: false };
+};
+
+// 后台安装依赖并启动 dev，成功后写入 project_url
+const startBackgroundDevSetup = ({ projectId, projectPath }) => {
+  setImmediate(async () => {
+    const prefix = `[initNewProject:bg-dev:${projectId}]`;
+    try {
+      console.log(`${prefix} 📦 npm install starting...`);
+      await execAsync("npm install", {
+        cwd: projectPath,
+        timeout: 30 * 60 * 1000, // 30分钟
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      console.log(`${prefix} ✅ npm install done`);
+
+      console.log(`${prefix} 🚀 starting npm run dev...`);
+      const devResult = await startOrReuseLocalDevServer({
+        projectId,
+        projectPath,
+      });
+      console.log(`${prefix} ✅ dev ready: ${devResult.url}`);
+
+      // 写入数据库 project_url（后台任务自行拿连接，避免复用已释放的 connection）
+      const conn = await pool.getConnection();
+      try {
+        await conn.query("use autoprovider_open");
+        await conn.query(
+          "UPDATE project_info SET project_url = ? WHERE project_id = ?",
+          [devResult.url, projectId]
+        );
+      } finally {
+        conn.release();
+      }
+    } catch (err) {
+      console.log(`${prefix} ⚠️ bg dev setup failed: ${err.message}`);
+      recordErrorLog(err, "initNewProject - startBackgroundDevSetup");
+    }
+  });
+};
 
 const pathExists = async (targetPath) => {
   try {
@@ -45,6 +214,10 @@ const copyDirectory = async (src, dest) => {
   const entries = await fs.readdir(src, { withFileTypes: true });
 
   for (const entry of entries) {
+    // 开源模板复制时跳过 node_modules/.next，避免体积过大 & 复制过慢
+    if (entry.name === "node_modules" || entry.name === ".next") {
+      continue;
+    }
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
 
@@ -114,32 +287,9 @@ const initScript = async (projectId, dokployProjectId = null) => {
     console.log(`[DEPLOY] 🚀 开始初始化项目: ${projectId}`);
     console.log(`${"=".repeat(60)}`);
 
-    // Next.js 项目 npm install
-    console.log(`\n[DEPLOY] 📦 步骤 1/2: 安装项目依赖 (npm install)...`);
-    const installStart = Date.now();
-    const installResult = await bashOperation(
-      {
-        commands: [
-          {
-            working_directory: "/app",
-            instruction: "npm install",
-          },
-        ],
-      },
-      {
-        projectId,
-        skipSendMessage: true,
-      }
-    );
-    if (installResult.status !== 0) {
-      console.log(
-        `[DEPLOY] ⚠️ 依赖安装可能有问题: ${installResult.data?.error || "未知"}`
-      );
-    }
+    // 开源版：创建项目接口不应被 npm install 阻塞，依赖安装/启动 dev 改为后台任务（见 startBackgroundDevSetup）
     console.log(
-      `[DEPLOY] ✅ 依赖安装完成 (${((Date.now() - installStart) / 1000).toFixed(
-        1
-      )}s)`
+      `\n[DEPLOY] 📦 跳过 initScript 中的 npm install（已改为后台执行）`
     );
 
     // npm install 完成后，不再自动部署到 Dokploy（根据需求改为手动部署，节省资源）
@@ -173,7 +323,6 @@ const initNewProject = async ({ user_id }) => {
   let dokployClient = null;
   let dokployProjectId = null;
   let dbUrlFromRemote = null;
-  let dbContainerId = null;
 
   try {
     // 参数验证
@@ -289,35 +438,54 @@ const initNewProject = async ({ user_id }) => {
     // 7.1. 更新项目内的数据库名称配置
     await updateProjectDbName(targetProjectPath, dbName);
 
-    // 7.2. 初始化数据库
-    // - 如果配置了 Dokploy，则在 Dokploy 中创建远程 MySQL
-    // - 否则，使用 Docker 创建本地 MySQL 容器
+    // 7.2. 初始化数据库（直接在本地 MySQL 中创建，不使用 Docker）
     const useDokploy = !!(dokployClient && dokployProjectId);
-    
-    if (!useDokploy) {
-      // 使用本地 Docker 数据库
-      console.log(`[initNewProject] 🐳 开始创建本地 Docker MySQL 容器...`);
-      const dbResult = await initDatabase({
-        projectId: project_id,
-        projectPath: targetProjectPath,
-        databaseName: dbName,
-        useDokploy: false,
-      });
 
-      if (dbResult.success && dbResult.data.type === "docker") {
-        dbContainerId = dbResult.data.containerId;
+    if (!useDokploy) {
+      console.log(`[initNewProject] 🗄️ 在本地 MySQL 中创建数据库: ${dbName}`);
+      try {
+        // 使用现有连接池创建项目数据库
+        await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
+        console.log(`[initNewProject] ✅ 本地数据库创建成功: ${dbName}`);
+
+        // 生成 DB_URL 并写入项目 .env
+        const localDbUrl = `mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST}:${MYSQL_PORT}/${dbName}`;
+        const envFilePath = path.join(targetProjectPath, ".env");
+        try {
+          let envContent = "";
+          try {
+            envContent = await fs.readFile(envFilePath, "utf-8");
+          } catch {
+            envContent = "";
+          }
+
+          // 更新或添加 DB_URL
+          if (/^DB_URL=.*$/m.test(envContent)) {
+            envContent = envContent.replace(
+              /^DB_URL=.*$/m,
+              `DB_URL=${localDbUrl}`
+            );
+          } else {
+            envContent = `${
+              envContent.trim().length ? `${envContent.trimEnd()}\n` : ""
+            }DB_URL=${localDbUrl}\n`;
+          }
+
+          await fs.writeFile(envFilePath, envContent, "utf-8");
+          console.log(
+            `[initNewProject] ✅ .env 写入 DB_URL 成功: ${localDbUrl}`
+          );
+        } catch (envWriteError) {
+          console.log(
+            `[initNewProject] ⚠️ 写入 DB_URL 失败: ${envWriteError.message}`
+          );
+          recordErrorLog(envWriteError, "initNewProject - writeLocalDbUrl");
+        }
+      } catch (createDbError) {
         console.log(
-          `[initNewProject] ✅ 本地数据库创建成功 (容器: ${dbContainerId.substring(0, 12)})`
+          `[initNewProject] ⚠️ 本地数据库创建失败: ${createDbError.message}`
         );
-        console.log(`[initNewProject]    DB_URL: ${dbResult.data.dbUrl}`);
-      } else if (!dbResult.success) {
-        console.log(
-          `[initNewProject] ⚠️ 本地数据库创建失败: ${dbResult.error}`
-        );
-        recordErrorLog(
-          new Error(dbResult.error),
-          "initNewProject - localDatabase"
-        );
+        recordErrorLog(createDbError, "initNewProject - createLocalDatabase");
       }
     }
 
@@ -488,58 +656,6 @@ const initNewProject = async ({ user_id }) => {
               recordErrorLog(deployMysqlError, "initNewProject - deployMySQL");
             }
           }
-
-          // 获取容器 ID（带重试机制，等待容器启动）
-          const MAX_RETRIES = 5;
-          const RETRY_DELAY = 3000; // 3秒
-
-          for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            try {
-              console.log(
-                `[initNewProject] 🔄 尝试获取容器ID (${attempt}/${MAX_RETRIES})...`
-              );
-              // 第一次等待较长时间让容器启动
-              const waitTime = attempt === 1 ? 5000 : RETRY_DELAY;
-              await new Promise((r) => setTimeout(r, waitTime));
-
-              const containerResult = await getDbContainerId({
-                projectId: project_id,
-                dbName,
-                serviceName: `${project_id}-db`,
-              });
-
-              if (
-                containerResult.status === 0 &&
-                containerResult.data?.containerId
-              ) {
-                dbContainerId = containerResult.data.containerId;
-                console.log(
-                  `[initNewProject] ✅ 获取数据库容器ID成功: ${dbContainerId}`
-                );
-                break; // 成功获取，退出重试循环
-              } else {
-                console.log(
-                  `[initNewProject] ⚠️ 第${attempt}次尝试未获取到容器ID: ${containerResult.message}`
-                );
-              }
-            } catch (containerError) {
-              console.log(
-                `[initNewProject] ⚠️ 第${attempt}次获取容器ID异常: ${containerError.message}`
-              );
-              if (attempt === MAX_RETRIES) {
-                recordErrorLog(
-                  containerError,
-                  "initNewProject - getDbContainerId"
-                );
-              }
-            }
-          }
-
-          if (!dbContainerId) {
-            console.log(
-              `[initNewProject] ⚠️ ${MAX_RETRIES}次尝试后仍未获取到容器ID，将在后续查询时动态获取`
-            );
-          }
         }
       }
     } catch (remoteDbError) {
@@ -564,24 +680,35 @@ const initNewProject = async ({ user_id }) => {
       recordErrorLog(error, "initNewProject - getFilesTree");
     }
 
-    // 回写 db_id 到项目表（若获取到）
+    // 回写数据库名到项目表（本地模式使用数据库名作为标识）
     try {
       await connection.query(
         "UPDATE project_info SET db_id = ? WHERE project_id = ?",
-        [dbContainerId || null, project_id]
+        [dbName, project_id]
       );
     } catch (writeDbIdError) {
       recordErrorLog(writeDbIdError, "initNewProject - writeDbId");
     }
 
-    // 10. 返回项目信息对象
+    // 8.1 开源版：若未配置 Dokploy，则在后台执行 npm install + npm run dev，并写入 project_url
+    // createproject 接口会立刻返回，让用户先进入 work；预览面板会轮询 getprojecturl 获取最终 URL
+    let projectUrl = "";
+    if (!hasDokployConfig()) {
+      startBackgroundDevSetup({
+        projectId: project_id,
+        projectPath: targetProjectPath,
+      });
+    }
+
+    // 10. 返回项目信息对象（带 project_url）
     const infoObject = {
       project_id,
       project_name: "新项目",
       project_path: targetProjectPath,
+      project_url: projectUrl,
       filesTree,
       dokploy_project_id: dokployProjectId, // 添加 Dokploy 项目ID
-      db_id: dbContainerId || null,
+      db_name: dbName, // 本地数据库名
     };
 
     return infoObject;

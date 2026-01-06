@@ -1,0 +1,32 @@
+
+-- SQL Operation @ 2026-01-06T22:39:56.374Z
+CREATE TABLE IF NOT EXISTS blog_posts (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) NOT NULL UNIQUE,
+  content TEXT NOT NULL,
+  excerpt VARCHAR(500),
+  featured_image VARCHAR(255),
+  published BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  author_name VARCHAR(100) DEFAULT 'Admin',
+  view_count INT DEFAULT 0
+);
+
+-- SQL Operation @ 2026-01-06T22:40:03.341Z
+CREATE TABLE IF NOT EXISTS categories (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL UNIQUE,
+  slug VARCHAR(50) NOT NULL UNIQUE,
+  description VARCHAR(255)
+);
+
+-- SQL Operation @ 2026-01-06T22:40:09.262Z
+CREATE TABLE IF NOT EXISTS post_categories (
+  post_id INT,
+  category_id INT,
+  PRIMARY KEY (post_id, category_id),
+  FOREIGN KEY (post_id) REFERENCES blog_posts(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);

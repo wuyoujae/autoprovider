@@ -1,113 +1,97 @@
-const pool = require("../../../../../db");
+const { assembleChatMessages, message2token } = require("../../combyChatHistory");
+const contentStandardization = require("../../contentStandardization");
+const getTodolist = require("../../getTodolist");
+const getFilesTree = require("../../../../AIfunction/getFilesTree");
+const getProjectsBasePath = require("../../../../getProjectsBasePath");
 const recordErrorLog = require("../../../../recordErrorLog");
-const level3 = require("./level3");
-const level4 = require("./level4");
-const { assembleChatMessages } = require("../..//combyChatHistory");
-const {
-  getRecentlyEditedFiles,
-  filterContextFilePaths,
-} = require("./utils/getRecentlyEditedFiles");
+const sendLoadingContent = require("./utils/sendLoadingContent");
 
-// 获取最新的需求分析结果（requirement_result）
-const fetchLatestDemandAnalysisResults = async (connection, workId) => {
-  if (!workId) return null;
-  const [rows] = await connection.query(
-    `SELECT product_content 
-     FROM requirement_result 
-     WHERE work_id = ? AND product_status = 0 
-     ORDER BY create_time DESC 
-     LIMIT 1`,
-    [workId]
-  );
-  const content = rows?.[0]?.product_content || null;
-  if (!content) return null;
-  try {
-    return JSON.parse(content);
-  } catch (e) {
-    // 如果不是 JSON，直接返回原文
-    return content;
-  }
-};
-
+/**
+ * Level5: 简化版 - 系统驱动时直接组装 presetMessages + 从数据库加载对话历史
+ * 不再读取额外的文件内容
+ *
+ * @param {string} promptContent - 系统驱动的 prompt 内容
+ * @param {Object} infoObject - 上下文信息
+ * @returns {Promise<Array>} messages 数组
+ */
 const level5 = async (promptContent, infoObject) => {
-  //首先我们需要数据库中的demand analysis results
-  let connection = infoObject.connection;
-  let shouldRelease = false;
   try {
-    if (!connection) {
-      connection = await pool.getConnection();
-      shouldRelease = true;
-    }
-    await connection.query("use autoprovider_open");
-    const demandAnalysisResults = await fetchLatestDemandAnalysisResults(
-      connection,
-      infoObject.workId
+    // 1) 标准化 system prompt
+    const standardizedSystemPrompt = await contentStandardization(
+      infoObject.systemPrompt,
+      infoObject
     );
 
-    // ====== 上下文去重优化 ======
-    // 获取最近 3 轮对话中已处理的文件列表
-    const recentlyEditedInfo = await getRecentlyEditedFiles({
-      connection,
-      workId: infoObject.workId,
-      sessionId: infoObject.sessionId,
-      turnsBack: 3,
-    });
-
-    // 从 contextFilePaths 中过滤掉已编辑/创建的文件
-    // 这些文件的内容 AI 已经知道（通过 tool 返回或自己编写）
-    const originalContextFilePaths =
-      demandAnalysisResults?.contextFilePaths || [];
-    const { filtered: filteredContextFilePaths, skipped: skippedFiles } =
-      filterContextFilePaths(originalContextFilePaths, recentlyEditedInfo, {
-        skipEdited: true, // 跳过已编辑的文件（AI 刚刚编辑过，知道内容）
-        skipCreated: true, // 跳过已创建的文件（AI 刚刚创建的，知道内容）
-        skipRead: false, // 不跳过已读取的文件（可能需要再次参考）
-      });
-
-    // 构建过滤后的 demandAnalysisResults
-    const filteredDemandAnalysisResults = {
-      ...demandAnalysisResults,
-      contextFilePaths: filteredContextFilePaths,
-      // 记录被跳过的文件（可用于调试或提示）
-      _skippedFiles: skippedFiles,
-      _recentlyEditedInfo: recentlyEditedInfo,
-    };
-
-    console.log(
-      `[level5] 上下文去重: 原始 ${originalContextFilePaths.length} 个文件, 过滤后 ${filteredContextFilePaths.length} 个文件, 跳过 ${skippedFiles.length} 个文件`
-    );
-
-    //把demandAnalysisResults传递进入level3，获取contextHistory
-    const contextHistory = await level3(
-      filteredDemandAnalysisResults,
-      infoObject,
-      true // isLevel5 = true
-    );
-
-    // 在 contextHistory 中添加被跳过文件的摘要信息
-    // 这样 AI 知道这些文件存在但内容未重新加载
-    if (skippedFiles.length > 0) {
-      contextHistory._skippedFilesNote = `以下 ${
-        skippedFiles.length
-      } 个文件在最近对话中已被编辑/创建，内容未重新加载（你已知道最新内容）: ${skippedFiles.join(
-        ", "
-      )}`;
+    // 2) 当前项目文件目录（文件树）
+    let currentProjectFileDirectory = "";
+    try {
+      const projectRoot =
+        (infoObject.filePath && infoObject.filePath.root) ||
+        `${getProjectsBasePath()}/${infoObject.projectId || ""}`;
+      currentProjectFileDirectory = getFilesTree(projectRoot);
+    } catch (e) {
+      recordErrorLog(e, "level5-getFilesTree");
     }
 
-    //将contextHistory传递进入level4，获取presetMessages
-    const presetMessages = await level4(contextHistory, infoObject, true);
+    // 3) 加载当前 session 未完成的最新一条 todolist
+    let todoListMessage = null;
+    try {
+      const todoList = await getTodolist(infoObject.sessionId);
+      if (Array.isArray(todoList) && todoList.length > 0) {
+        todoListMessage = {
+          role: "system",
+          content: `这是当前会话的todolist完成情况：\n${JSON.stringify(
+            todoList
+          )}`,
+        };
+      }
+    } catch (e) {
+      recordErrorLog(e, "level5-getTodolist");
+    }
 
-    //获取当前work的dialogue历史上下文
-    //这里我们需要复用以前的逻辑，传入 presetMessages 获取聊天消息
+    // ====== Token 分项统计（system prompt / 文件树 / todolist）======
+    try {
+      const systemPromptTokens = message2token(standardizedSystemPrompt || "");
+      const fileTreeTokens = message2token(currentProjectFileDirectory || "");
+      const todolistTokens = message2token(todoListMessage?.content || "");
+      const totalPresetPartsTokens =
+        systemPromptTokens + fileTreeTokens + todolistTokens;
+
+      const debugLine =
+        `[TokenBreakdown] systemPrompt=${systemPromptTokens} ` +
+        `fileTree=${fileTreeTokens} todolist=${todolistTokens} ` +
+        `total=${totalPresetPartsTokens}`;
+
+      console.log(debugLine);
+      sendLoadingContent(debugLine, infoObject);
+    } catch (e) {
+      // ignore
+    }
+
+    // 4) 组装 presetMessages（简化版：只包含 system prompt、文件目录、todolist）
+    const presetMessages = [
+      {
+        role: "system",
+        content: standardizedSystemPrompt,
+      },
+      {
+        role: "system",
+        content: `这是当前项目的文件目录：\n${currentProjectFileDirectory}`,
+      },
+    ];
+
+    if (todoListMessage) {
+      presetMessages.push(todoListMessage);
+    }
+
+    // 5) 调用 assembleChatMessages 加载历史消息
+    // assembleChatMessages 会从数据库读取对话历史，并在 token 超限时触发压缩
     const messages = await assembleChatMessages(presetMessages, infoObject);
+
     return messages;
   } catch (error) {
     recordErrorLog(error, "level5");
     return [];
-  } finally {
-    if (shouldRelease && connection) {
-      connection.release();
-    }
   }
 };
 

@@ -70,7 +70,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use("/api/v1", router);
 
-app.listen(3019, () => {
+app.listen(3033, () => {
   console.log("Server is running on port 3019");
 
   // 启动后自动初始化数据库（创建 DB 并执行 db/db.sql）

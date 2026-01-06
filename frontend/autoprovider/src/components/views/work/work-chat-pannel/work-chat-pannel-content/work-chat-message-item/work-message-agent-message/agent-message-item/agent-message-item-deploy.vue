@@ -10,6 +10,21 @@
       {{ props.content }}
     </div>
   </div>
+
+  <div v-if="previewUrl" class="agent-message-item-deploy__preview">
+    <div class="agent-message-item-deploy__preview-header">
+      <span class="agent-message-item-deploy__preview-title">预览</span>
+      <a
+        class="agent-message-item-deploy__preview-link"
+        :href="previewUrl"
+        target="_blank"
+        rel="noreferrer"
+      >
+        {{ previewUrl }}
+      </a>
+    </div>
+    <iframe class="agent-message-item-deploy__iframe" :src="previewUrl" />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -43,6 +58,26 @@ const status = computed(() => {
     return "loading";
   }
   return "info";
+});
+
+const previewUrl = computed(() => {
+  const text = props.content || "";
+
+  // 1) 尝试解析 JSON：{"url":"http://localhost:3000"}
+  try {
+    const obj = JSON.parse(text);
+    if (obj && typeof obj.url === "string" && obj.url.startsWith("http")) {
+      return obj.url;
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  // 2) 从普通文本中提取 URL
+  const match = text.match(/https?:\/\/[^\s]+/);
+  if (match && match[0]) return match[0];
+
+  return "";
 });
 
 const statusClass = computed(() => {
@@ -108,6 +143,50 @@ const statusClass = computed(() => {
       color: #fdc4c4; // 辅助色 #FDC4C4
     }
   }
+}
+
+.agent-message-item-deploy__preview {
+  margin-top: 0.75rem;
+  width: min(100%, 920px);
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.agent-message-item-deploy__preview-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.agent-message-item-deploy__preview-title {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: "Source Serif 4", serif;
+  white-space: nowrap;
+}
+
+.agent-message-item-deploy__preview-link {
+  font-size: 0.8125rem;
+  color: rgba(254, 238, 222, 0.9);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-message-item-deploy__preview-link:hover {
+  text-decoration: underline;
+}
+
+.agent-message-item-deploy__iframe {
+  width: 100%;
+  height: 620px;
+  border: 0;
+  background: #111;
 }
 
 .animate-spin {

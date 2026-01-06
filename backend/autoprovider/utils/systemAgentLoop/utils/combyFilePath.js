@@ -12,12 +12,19 @@ const basePath = getProjectsBasePath();
  * format: { pattern: RegExp, replacement: string }
  */
 const PATH_RULES = [
-  // 新模板：统一到 /app 根目录
-  { pattern: /^\/frontend(\/|$)/, replacement: "/app/" },
-  { pattern: /^\/backend(\/|$)/, replacement: "/app/" },
-  // 兼容 src 层写法
-  { pattern: /^\/src\/frontend(\/|$)/, replacement: "/app/src/" },
-  { pattern: /^\/src\/backend(\/|$)/, replacement: "/app/src/" },
+  // 开源模板（my-app）：项目根目录就是项目文件夹（含 package.json）
+  // AI 可能会错误地生成 /frontend、/backend 前缀，这里统一映射到项目根目录
+  { pattern: /^\/frontend(\/|$)/, replacement: "/" },
+  { pattern: /^\/backend(\/|$)/, replacement: "/" },
+  // 常见误写：把项目根目录当成 /app，再拼一次 Next.js 的 app 目录，形成 /app/app/...
+  // 修正为 /app/...
+  { pattern: /^\/app\/app(\/|$)/, replacement: "/app/" },
+  // 兼容 src 层写法（如果未来模板引入 src）
+  { pattern: /^\/src\/frontend(\/|$)/, replacement: "/src/" },
+  { pattern: /^\/src\/backend(\/|$)/, replacement: "/src/" },
+  // AI 可能错误地把 Docker 容器路径 /app 当成项目根目录前缀
+  // 当路径是 /app/xxx 且 xxx 不是 Next.js 的 app 目录下的典型文件时，尝试移除 /app 前缀
+  // 注意：这个规则通过特殊标记处理，不在这里直接匹配
   // 可以在此处继续添加更多规则...
 ];
 
@@ -77,6 +84,25 @@ const combyFilePath = (projectId, filePath) => {
   const primaryPath = path.join(basePath, projectId, correctedPath);
   if (fs.existsSync(primaryPath)) {
     return primaryPath;
+  }
+
+  // Fallback 1: 如果路径以 /app/ 开头但文件不存在，尝试移除 /app 前缀
+  // 这是因为 AI 可能把 Docker 容器的 /app 工作目录当成了绝对路径前缀
+  if (correctedPath.startsWith("/app/")) {
+    const withoutAppPrefix = correctedPath.replace(/^\/app/, "");
+    const fallbackPath = path.join(basePath, projectId, withoutAppPrefix);
+    if (fs.existsSync(fallbackPath)) {
+      return fallbackPath;
+    }
+  }
+
+  // Fallback 2: 如果路径不以 /app/ 开头，尝试添加 /app 前缀
+  // 这是为了兼容 Next.js 的 app 目录结构
+  if (!correctedPath.startsWith("/app/") && !correctedPath.startsWith("/app")) {
+    const withAppPrefix = path.join(basePath, projectId, "app", correctedPath);
+    if (fs.existsSync(withAppPrefix)) {
+      return withAppPrefix;
+    }
   }
 
   // 不存在则直接返回主路径，由上层处理错误

@@ -7,8 +7,22 @@ const pool = require("../../db");
 const SQL_ARCHIVE_RELATIVE_PATH = "/documents/db.sql";
 const chatToFrontend = require("./functionChatToFrontend/chatToFrontend");
 const recordErrorLog = require("../recordErrorLog");
-const { getDbContainerId } = require("../systemWorkLoop/ssh2/getDbContainerId");
-const { executeDbCommand } = require("../systemWorkLoop/ssh2/executeDbCommand");
+
+// 本地模式标志 - 设置为 true 时直接使用本地数据库连接池
+const USE_LOCAL_DB = true;
+
+// 开源版本地数据库：优先从项目 .env 中读取 DB_URL（initDatabase 会写入）
+const readDbUrlFromProjectEnv = async (projectId) => {
+  try {
+    const envPath = combyFilePath(projectId, "/.env");
+    const raw = await fs.readFile(envPath, "utf-8");
+    const match = raw.match(/^DB_URL\s*=\s*(.+)\s*$/m);
+    if (match && match[1]) return match[1].trim();
+  } catch (e) {
+    // ignore
+  }
+  return "";
+};
 
 /**
  * 确保目录存在（异步版本）
@@ -214,44 +228,78 @@ const buildExecutionDetail = ({
   };
 };
 
-const resolveContainerId = async ({
-  projectId,
-  userDbName,
-  infoObject,
-  sshOptions,
-}) => {
-  // 优先使用 infoObject 中的 db_id / dbId
-  if (infoObject?.db_id) return infoObject.db_id;
-  if (infoObject?.dbId) return infoObject.dbId;
-
-  // 尝试从 project_info 查询 db_id
+/**
+ * 在本地数据库执行单条 SQL 语句
+ * @param {Object} connection - 数据库连接
+ * @param {string} statement - SQL 语句
+ * @param {string} targetDbName - 目标数据库名称
+ * @returns {Promise<Object>} 执行结果
+ */
+const executeLocalSql = async (connection, statement, targetDbName) => {
   try {
-    const connection = await pool.getConnection();
-    try {
-      const [rows] = await connection.query(
-        "SELECT db_id FROM project_info WHERE project_id = ? LIMIT 1",
-        [projectId]
-      );
-      if (rows.length && rows[0].db_id) {
-        return rows[0].db_id;
-      }
-    } finally {
-      connection.release();
+    // 如果是 USE 语句，直接执行切换数据库
+    const upperStmt = statement.trim().toUpperCase();
+    if (upperStmt.startsWith("USE ")) {
+      await connection.query(statement);
+      return { status: 0, data: { output: `切换到数据库成功` } };
     }
-  } catch (metaErr) {
-    recordErrorLog(metaErr, "sqlOperation - fetch db_id");
-  }
 
-  // 回退：通过名称匹配容器
-  const containerResult = await getDbContainerId({
-    projectId,
-    dbName: userDbName,
-    ...sshOptions,
-  });
-  if (containerResult.status === 0 && containerResult.data?.containerId) {
-    return containerResult.data.containerId;
+    // 执行其他 SQL 语句
+    const [result] = await connection.query(statement);
+
+    // 根据结果类型构建输出
+    let output = "";
+    if (Array.isArray(result)) {
+      // SELECT 查询结果
+      output = `查询返回 ${result.length} 行`;
+      if (result.length > 0 && result.length <= 10) {
+        output += "\n" + JSON.stringify(result, null, 2);
+      } else if (result.length > 10) {
+        output +=
+          "\n" +
+          JSON.stringify(result.slice(0, 10), null, 2) +
+          "\n... (更多结果已省略)";
+      }
+    } else if (result && typeof result === "object") {
+      // INSERT/UPDATE/DELETE 等结果
+      if (result.affectedRows !== undefined) {
+        output = `影响行数: ${result.affectedRows}`;
+      }
+      if (result.insertId) {
+        output += `, 插入ID: ${result.insertId}`;
+      }
+      if (result.warningCount > 0) {
+        output += `, 警告数: ${result.warningCount}`;
+      }
+    }
+
+    return { status: 0, data: { output } };
+  } catch (error) {
+    return {
+      status: 1,
+      message: error.message,
+      data: { output: error.message },
+    };
   }
-  return null;
+};
+
+/**
+ * 过滤掉 AI 传入的 USE 语句，避免把连接切换到非目标库（例如系统库 autoprovider_open）
+ * @param {string[]} statements
+ * @returns {{filtered: string[], removedUseStatements: string[]}}
+ */
+const stripUseStatements = (statements = []) => {
+  const removedUseStatements = [];
+  const filtered = [];
+  for (const stmt of statements) {
+    const op = extractOperationType(stmt);
+    if (op === "USE") {
+      removedUseStatements.push(stmt);
+      continue;
+    }
+    filtered.push(stmt);
+  }
+  return { filtered, removedUseStatements };
 };
 
 /**
@@ -327,78 +375,99 @@ async function sqlOperation(payload = {}, infoObject = {}) {
       };
     }
 
-    // 计算远程数据库名与容器
-    const userDbName = `myapp_${projectId.replace(/-/g, "_").toLowerCase()}`;
-    const containerId = await resolveContainerId({
-      projectId,
-      userDbName,
-      infoObject,
-      sshOptions,
-    });
-    if (!containerId) {
-      return {
-        status: 1,
-        message: "sqloperation fail",
-        data: {
-          error: "未找到对应数据库容器，请确认部署状态",
-        },
-      };
-    }
+    // 计算用户数据库名（基于 projectId），强制所有 SQL 都在该库中执行
+    const targetDbName = `myapp_${projectId.replace(/-/g, "_").toLowerCase()}`;
+
+    // 过滤掉 AI 传入的 USE，防止切库到系统库或其他库
+    const { filtered: sanitizedStatements } = stripUseStatements(statements);
 
     const executions = [];
 
-    for (let i = 0; i < statements.length; i++) {
-      const statement = statements[i];
-      const operationType = extractOperationType(statement);
-      const startTime = process.hrtime.bigint();
-
+    // 本地数据库模式
+    if (USE_LOCAL_DB) {
+      let connection;
       try {
-        const execResult = await executeDbCommand({
-          containerId,
-          dbName: userDbName,
-          sql: statement,
-          ...sshOptions,
-        });
-
-        const executionTime = formatDuration(startTime);
-        const success = execResult.status === 0;
-        const outputText = execResult.data?.output || "";
-        executions.push(
-          buildExecutionDetail({
-            statement,
-            operationType,
-            executionTime,
-            outputText,
-            success,
-          })
-        );
-
-        if (!success) {
+        // 连接到项目自己的本地 Docker MySQL（而不是平台库 autoprovider_open）
+        const dbUrl = await readDbUrlFromProjectEnv(projectId);
+        if (!dbUrl) {
           return {
             status: 1,
             message: "sqloperation fail",
             data: {
-              sql: statement,
-              result: `执行结果：execute fail【${
-                execResult.message || "远程执行失败"
-              }】`,
-              output: outputText,
+              error:
+                "未找到项目 DB_URL（.env 中缺少 DB_URL）。请确认数据库已创建完成后重试。",
             },
           };
         }
-      } catch (stmtError) {
-        recordErrorLog(stmtError, "AgentFunction in sql operation");
-        const executionTime = formatDuration(startTime);
-        return {
-          status: 1,
-          message: "sqloperation fail",
-          data: {
-            sql: statement,
-            result: `执行结果：execute fail【${stmtError.message}】`,
-            execution_time: executionTime,
-            output: "",
-          },
-        };
+
+        connection = await require("mysql2/promise").createConnection(dbUrl);
+
+        for (let i = 0; i < sanitizedStatements.length; i++) {
+          const statement = sanitizedStatements[i];
+          const operationType = extractOperationType(statement);
+          const startTime = process.hrtime.bigint();
+
+          try {
+            const execResult = await executeLocalSql(
+              connection,
+              statement,
+              targetDbName
+            );
+
+            const executionTime = formatDuration(startTime);
+            const success = execResult.status === 0;
+            const outputText = execResult.data?.output || "";
+            executions.push(
+              buildExecutionDetail({
+                statement,
+                operationType,
+                executionTime,
+                outputText,
+                success,
+              })
+            );
+
+            if (!success) {
+              return {
+                status: 1,
+                message: "sqloperation fail",
+                data: {
+                  sql: statement,
+                  result: `执行结果：execute fail【${
+                    execResult.message || "本地执行失败"
+                  }】`,
+                  output: outputText,
+                },
+              };
+            }
+          } catch (stmtError) {
+            recordErrorLog(stmtError, "AgentFunction in sql operation (local)");
+            const executionTime = formatDuration(startTime);
+            return {
+              status: 1,
+              message: "sqloperation fail",
+              data: {
+                sql: statement,
+                result: `执行结果：execute fail【${stmtError.message}】`,
+                execution_time: executionTime,
+                output: "",
+              },
+            };
+          }
+        }
+      } finally {
+        if (connection) {
+          // mysql2/promise 连接使用 end 关闭
+          if (typeof connection.end === "function") {
+            try {
+              await connection.end();
+            } catch (e) {
+              // ignore
+            }
+          } else if (typeof connection.release === "function") {
+            connection.release();
+          }
+        }
       }
     }
 
@@ -417,7 +486,7 @@ async function sqlOperation(payload = {}, infoObject = {}) {
       data: {
         executions,
         summary: {
-          total_statements: statements.length,
+          total_statements: sanitizedStatements.length,
           successful_statements: executions.length,
           failed_statements: 0,
         },

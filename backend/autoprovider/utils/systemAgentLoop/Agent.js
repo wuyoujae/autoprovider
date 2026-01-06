@@ -7,6 +7,11 @@ const {
   message2token,
   bindFilesToDialogue,
 } = require("./utils/combyChatHistory");
+const {
+  countTokens,
+  countMessagesTokens,
+  truncateToTokenLimit,
+} = require("../tokenCounter");
 const epoche = require("./epoche");
 const updateChatHistory = require("./utils/updateChatHistory");
 const {
@@ -59,6 +64,103 @@ const tokenLimitNum = (value, fallback = 130000) => {
 };
 const hasValue = (value) =>
   value !== undefined && value !== null && String(value).trim() !== "";
+
+// ==================== 上下文裁剪（防止 provider 报 context window exceeds limit） ====================
+const clampInt = (v, min, max) => Math.max(min, Math.min(max, Math.floor(v)));
+
+/**
+ * 让 messages + tools + max_tokens 不超过模型上下文窗口
+ * - 优先保留 system + 最近的对话
+ * - 必要时截断过长的 system 内容
+ */
+const fitMessagesToContextWindow = ({
+  messages,
+  tools,
+  maxContextTokens,
+  reserveOutputTokens,
+}) => {
+  const safeMaxContext = clampInt(maxContextTokens || 8000, 2000, 5000000);
+  const toolsStr = tools ? JSON.stringify(tools) : "";
+  const toolsTokens = toolsStr ? countTokens(toolsStr) : 0;
+
+  // 默认给输出留点空间（否则 provider 可能按默认输出预算计算，从而报超限）
+  const defaultReserve = clampInt(
+    reserveOutputTokens || Number(process.env.LLM_MAX_OUTPUT_TOKENS) || 2048,
+    256,
+    8192
+  );
+
+  let trimmed = false;
+  let m = Array.isArray(messages) ? [...messages] : [];
+
+  // 先清理：如果开头不是 system，保持原状；如果 system 过长，做一次软截断
+  if (
+    m.length > 0 &&
+    m[0]?.role === "system" &&
+    typeof m[0]?.content === "string"
+  ) {
+    const sysCap = clampInt(
+      Math.floor(safeMaxContext * 0.6),
+      800,
+      safeMaxContext - 512
+    );
+    if (countTokens(m[0].content) > sysCap) {
+      m[0] = { ...m[0], content: truncateToTokenLimit(m[0].content, sysCap) };
+      trimmed = true;
+    }
+  }
+
+  const calcTotal = () => countMessagesTokens(m) + toolsTokens;
+  let total = calcTotal();
+
+  // 如果 still 超限，则从最老的非 system 消息开始丢弃，直到能放下（包含输出预留）
+  while (m.length > 2 && total + defaultReserve > safeMaxContext) {
+    // 移除 system 之后的第一条（最老）
+    m.splice(1, 1);
+    trimmed = true;
+
+    // 避免 tool 消息孤立开头（简单处理：去掉开头连续的 tool）
+    while (m.length > 1 && m[1]?.role === "tool") {
+      m.splice(1, 1);
+    }
+
+    total = calcTotal();
+  }
+
+  // 计算 max_tokens：保证 prompt + max_tokens <= context
+  const remainingForOutput = safeMaxContext - total;
+  const maxTokens = clampInt(
+    Math.min(defaultReserve, remainingForOutput),
+    128,
+    defaultReserve
+  );
+
+  // 极端情况：连最小输出都放不下，继续截断 system 到更小
+  if (remainingForOutput < 128 && m.length > 0 && m[0]?.role === "system") {
+    const hardCap = clampInt(
+      Math.floor(safeMaxContext * 0.4),
+      400,
+      safeMaxContext - 256
+    );
+    if (typeof m[0]?.content === "string") {
+      m[0] = { ...m[0], content: truncateToTokenLimit(m[0].content, hardCap) };
+      trimmed = true;
+      total = calcTotal();
+    }
+  }
+
+  return {
+    messages: m,
+    max_tokens: maxTokens,
+    meta: {
+      trimmed,
+      tokens: total,
+      toolsTokens,
+      maxContextTokens: safeMaxContext,
+      reserveOutputTokens: defaultReserve,
+    },
+  };
+};
 
 // ==================== 从数据库读取用户配置的模型 ====================
 const buildModelConfig = () => {
@@ -200,6 +302,57 @@ const findNextAvailableConfig = (startIndex = 0) => {
   return { config: null, index: MODEL_PRIORITY.length };
 };
 
+// 检测是否是七牛云 Claude API
+const isQiniuClaudeApi = (config) => {
+  if (!config) return false;
+  const baseUrl = (config.baseUrl || config.baseURL || "").toLowerCase();
+  const modelName = (config.model || "").toLowerCase();
+  return (
+    baseUrl.includes("qnaigc") ||
+    baseUrl.includes("qiniu") ||
+    modelName.includes("claude")
+  );
+};
+
+// 为七牛云 Claude API 调整请求参数
+const adjustParamsForQiniuClaude = (params, config) => {
+  if (!isQiniuClaudeApi(config)) {
+    return params;
+  }
+
+  console.log("[AgentChat] 检测到七牛云 Claude API，调整请求参数");
+
+  const adjusted = { ...params };
+
+  // 1. 确保 max_tokens 有值（Claude 必需）
+  if (!adjusted.max_tokens || adjusted.max_tokens <= 0) {
+    adjusted.max_tokens = 4096;
+  }
+
+  // 2. 七牛云 Claude API 对 tools 格式要求：
+  // 如果 tools 存在且不为空，保持格式，但移除可能不支持的 tool_choice
+  if (adjusted.tools && adjusted.tools.length > 0) {
+    // 七牛云文档说如果有函数存在，默认为 auto，所以不需要显式设置 tool_choice
+    delete adjusted.tool_choice;
+  } else {
+    // 没有 tools 时移除相关参数
+    delete adjusted.tools;
+    delete adjusted.tool_choice;
+  }
+
+  // 3. 移除 Claude 可能不支持的参数
+  delete adjusted.frequency_penalty;
+  delete adjusted.presence_penalty;
+  delete adjusted.logit_bias;
+  delete adjusted.logprobs;
+  delete adjusted.top_logprobs;
+  delete adjusted.n;
+  delete adjusted.seed;
+  delete adjusted.user;
+
+  return adjusted;
+};
+
 // 创建 OpenAI 客户端
 const createClient = (config) => {
   return new OpenAI({
@@ -276,14 +429,36 @@ let cachedAgentFunctions = null;
 
 // 异步加载并缓存 system prompt 和 agent functions
 const loadAgentConfig = async () => {
+  // 允许通过环境变量覆盖（便于切换版本/灰度）
+  const promptCandidates = [
+    process.env.AGENT_PROMPT_FILE,
+    "agent/prompt0.7.md",
+    "agent/prompt0.6.md",
+    "agent/prompt0.5.md",
+  ].filter(Boolean);
+  const functionsCandidates = [
+    process.env.AGENT_FUNCTIONS_FILE,
+    "agent/Agentfunction_v2.json",
+    "agent/Agentfunction.json",
+  ].filter(Boolean);
+
+  const tryReadText = async (paths) => {
+    let lastErr = null;
+    for (const p of paths) {
+      try {
+        return await fs.promises.readFile(p, "utf-8");
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("No readable file candidates");
+  };
+
   if (!cachedSystemPrompt) {
-    cachedSystemPrompt = await fs.promises.readFile(
-      "agent/prompt0.5.md",
-      "utf-8"
-    );
+    cachedSystemPrompt = await tryReadText(promptCandidates);
   }
   if (!cachedAgentFunctions) {
-    const raw = await fs.promises.readFile("agent/Agentfunction.json", "utf-8");
+    const raw = await tryReadText(functionsCandidates);
     cachedAgentFunctions = JSON.parse(raw);
   }
   return {
@@ -296,6 +471,10 @@ const loadAgentConfig = async () => {
 const AI_API_TIMEOUT = 300000; // 5分钟
 // 单次工作的最大超时时间（毫秒）
 const AGENT_WORK_TIMEOUT = 1800000; // 30分钟
+// 单次工作的最大循环次数（防止无限循环）
+const MAX_WORK_ITERATIONS = 50;
+// TodoList 驱动的最大连续次数（防止 AI 陷入 todolist 循环）
+const MAX_TODOLIST_DRIVEN_ITERATIONS = 10;
 
 const functionCalling = async (toolCallObjectArray, infoObject) => {
   try {
@@ -340,6 +519,7 @@ const functionCalling = async (toolCallObjectArray, infoObject) => {
 
       results.push({
         functionName: toolName,
+        toolCallId: toolCallId, // 保留每个 tool call 的 id
         content: resultContent,
         status: functionResult?.status,
         message: functionResult?.message,
@@ -415,11 +595,17 @@ const AgentChat = async (params, infoObject) => {
         );
 
         // 使用当前模型名称更新 params
-        const requestParams = {
+        let requestParams = {
           ...params,
           model: model.name,
           signal: abortController.signal,
         };
+
+        // 为七牛云 Claude API 调整参数
+        requestParams = adjustParamsForQiniuClaude(
+          requestParams,
+          currentConfig
+        );
 
         response = await withTimeout(
           client.chat.completions.create(requestParams),
@@ -962,23 +1148,23 @@ const AgentChat = async (params, infoObject) => {
           },
         };
       }
-      // 汇总所有工具调用结果，写入一条 tool 消息，避免多条 tool 记录分散
-      if (fcResult && fcResult.formattedResults) {
-        const mergedToolDialogueId = uuidv4();
-        await updateDialogueRecord({
-          dialogueId: mergedToolDialogueId,
-          role: "tool",
-          content: fcResult.formattedResults,
-          dialogue_index: infoObject.nowDialogueIndex,
-          dialogue_sender: "system",
-          tool_call_id:
-            filteredToolCalls.length === 1
-              ? filteredToolCalls[0]?.id || null
-              : "multiple_tool_calls",
-          work_id: infoObject.workId,
-          tool_call: JSON.stringify(filteredToolCalls),
-        });
-        infoObject.nowDialogueIndex++;
+      // 为每个 tool call 单独写入一条 tool 消息（确保 tool_call_id 正确匹配）
+      // 这是 OpenAI API 的要求：每个 tool_call 必须有对应的 tool 响应消息
+      if (fcResult && fcResult.results && fcResult.results.length > 0) {
+        for (const result of fcResult.results) {
+          const toolDialogueId = uuidv4();
+          const toolContent = `\`\`\` ${result.functionName}\n\n${result.content}\n\n\`\`\``;
+          await updateDialogueRecord({
+            dialogueId: toolDialogueId,
+            role: "tool",
+            content: toolContent,
+            dialogue_index: infoObject.nowDialogueIndex,
+            dialogue_sender: "system",
+            tool_call_id: result.toolCallId, // 使用正确的 tool_call_id
+            work_id: infoObject.workId,
+          });
+          infoObject.nowDialogueIndex++;
+        }
       }
       //调用之后更新infoObject.dialogueId = uuidv4();
     }
@@ -1084,8 +1270,27 @@ const AgentWork = async (infoObject) => {
     let dialogue_index = 0;
     infoObject.nowDialogueIndex = dialogue_index;
 
+    // 循环计数器（防止无限循环）
+    let workIterationCount = 0;
+    let todolistDrivenCount = 0; // todolist 驱动的连续次数
+    let lastAssistantContent = ""; // 用于检测重复输出
+
     try {
       do {
+        workIterationCount++;
+
+        // 检查循环次数限制
+        if (workIterationCount > MAX_WORK_ITERATIONS) {
+          console.log(
+            `[AgentWork] 达到最大循环次数限制 (${MAX_WORK_ITERATIONS})，强制退出`
+          );
+          recordErrorLog(
+            `达到最大循环次数限制: ${MAX_WORK_ITERATIONS}`,
+            "AgentWork - max iterations"
+          );
+          break;
+        }
+
         // 检查是否终止
         if (workControl.isStopped) {
           console.log(`Session ${infoObject.sessionId} terminated`);
@@ -1111,22 +1316,46 @@ const AgentWork = async (infoObject) => {
           // 重置AgentChat 调用工具循环
           shouldContinue = false;
 
-          // 对prompt进行处理
+          // 对prompt进行处理 - 简洁明确的系统驱动提示
           if (isSystemSentForWorkPrompt) {
             if (nextPromptReason === "tool") {
-              infoObject.newPrompt =
-                "已经将工具调用结果告诉你，请你继续满足用户的需求 ，如果你需要对出function call工作循环，只需要回复一条正常不调用任何function使用@Agent.js 的消息 ---这条消息来自autoprovider系统";
+              // 工具调用后继续 - 简洁提示
+              infoObject.newPrompt = "Continue.";
+              todolistDrivenCount = 0;
             } else if (nextPromptReason === "todolist") {
-              // 驱动提示保持简单，不再附带 todo 详情
-              infoObject.newPrompt =
-                "你现在还有未完成的todo，请继续工作。如果需要退出todolist工作循环，请调用对应方法退出，否则我们会一直循环和你对话！---这条消息来自autoprovider系统";
+              todolistDrivenCount++;
+
+              // 检查 todolist 驱动次数限制
+              if (todolistDrivenCount > MAX_TODOLIST_DRIVEN_ITERATIONS) {
+                console.log(
+                  `[AgentWork] TodoList 驱动达到最大次数限制 (${MAX_TODOLIST_DRIVEN_ITERATIONS})，强制退出`
+                );
+                recordErrorLog(
+                  `TodoList 驱动达到最大次数: ${MAX_TODOLIST_DRIVEN_ITERATIONS}`,
+                  "AgentWork - max todolist iterations"
+                );
+                break;
+              }
+
+              // 简洁的 todolist 驱动提示 - 避免重复冗长
+              // 根据次数调整提示策略
+              if (todolistDrivenCount === 1) {
+                infoObject.newPrompt = "Continue with next todo item.";
+              } else if (todolistDrivenCount <= 3) {
+                infoObject.newPrompt = `Todo loop #${todolistDrivenCount}. Mark completed items with done_todo.`;
+              } else {
+                // 多次驱动后提示退出选项
+                infoObject.newPrompt = `Todo loop #${todolistDrivenCount}. If blocked, call exit_todolist.`;
+              }
             } else {
-              infoObject.newPrompt = "继续进行下一步工作";
+              infoObject.newPrompt = "Continue.";
+              todolistDrivenCount = 0;
             }
             infoObject.isSystemSentForWorkPrompt = true;
           } else {
             infoObject.isSystemSentForWorkPrompt = false;
             nextPromptReason = null;
+            todolistDrivenCount = 0;
           }
 
           //先创建一个dialogueId
@@ -1138,21 +1367,21 @@ const AgentWork = async (infoObject) => {
             ? "system"
             : "client";
 
-          // 系统驱动的循环提示需要写入对话历史，便于后续 level5 读取历史
-          if (infoObject.dialogueSender === "system") {
-            await updateDialogueRecord({
-              dialogueId: infoObject.dialogueId,
-              role: "user",
-              content: infoObject.newPrompt,
-              dialogue_index: infoObject.nowDialogueIndex,
-              dialogue_sender: "system",
-              work_id: infoObject.workId,
-              is_agent_generate: 1,
-            });
-            infoObject.nowDialogueIndex++;
-            // 记录完 user 消息后，创建新的 dialogueId 供后续 assistant 消息使用
-            infoObject.dialogueId = uuidv4();
-          }
+          // ====== 关键修复：无论是用户发送还是系统驱动，都要把 user 消息写入 dialogue_record ======
+          // 否则 loadChatHistory 找不到 user 消息来组装历史分组，导致历史永远为空
+          await updateDialogueRecord({
+            dialogueId: infoObject.dialogueId,
+            role: "user",
+            content: infoObject.newPrompt,
+            dialogue_index: infoObject.nowDialogueIndex,
+            dialogue_sender: infoObject.dialogueSender,
+            work_id: infoObject.workId,
+            session_id: infoObject.sessionId,
+            is_agent_generate: isSystemSentForWorkPrompt ? 1 : 0,
+          });
+          infoObject.nowDialogueIndex++;
+          // 记录完 user 消息后，创建新的 dialogueId 供后续 assistant 消息使用
+          infoObject.dialogueId = uuidv4();
 
           //对系统提示词进行标准化，替换其中的变量
           const standardizedSystemPrompt = await contentStandardization(
@@ -1301,16 +1530,35 @@ const AgentWork = async (infoObject) => {
             );
           }
 
+          // ==================== 关键：在调用模型前做上下文窗口裁剪 ====================
+          const fitted = fitMessagesToContextWindow({
+            messages: finalMessages,
+            tools: infoObject.agentFunctions,
+            maxContextTokens: infoObject.model?.tokenLimit,
+            reserveOutputTokens:
+              Number(process.env.LLM_MAX_OUTPUT_TOKENS) || 2048,
+          });
+          if (fitted.meta.trimmed) {
+            console.log(
+              `[ContextTrim] trimmed=true tokens=${fitted.meta.tokens} tools=${fitted.meta.toolsTokens} ` +
+                `maxContext=${fitted.meta.maxContextTokens} reserveOut=${fitted.meta.reserveOutputTokens} ` +
+                `messages=${finalMessages.length}->${fitted.messages.length}`
+            );
+          }
+          finalMessages = fitted.messages;
+
           // build chat request params
           const params = {
             model: infoObject.model.name,
             messages: finalMessages, // 使用处理后的消息
             stream: true,
             tools: infoObject.agentFunctions,
-            // max_tokens: infoObject.model.tokenLimit,
+            // 显式设置 max_tokens，避免 provider 默认预留过大导致 “context window exceeds limit”
+            max_tokens: fitted.max_tokens,
           };
 
           // call AI
+          console.log(params.messages);
           const response = await AgentChat(params, infoObject);
 
           // 检查 response 是否因为终止而返回
@@ -1344,22 +1592,48 @@ const AgentWork = async (infoObject) => {
           });
 
           // 如果 exit_todolist 被调用，跳过本轮工作循环，不再继续下一次 AgentChat
-          // 根据循环原因设置下一轮系统提示
-          const hasPendingTodo = await epoche(infoObject);
           if (infoObject.exitTodolist) {
             infoObject.exitTodolist = false;
+            console.log("[AgentWork] exit_todolist 被调用，退出循环");
             break;
           }
+
+          // 检测重复输出（防止 AI 陷入重复模式）
+          if (response && response.content) {
+            const currentContent = response.content.trim().slice(0, 200); // 取前200字符比较
+            if (
+              currentContent &&
+              currentContent === lastAssistantContent &&
+              !response.toolCalls?.length
+            ) {
+              console.log("[AgentWork] 检测到重复输出，可能陷入循环，强制退出");
+              recordErrorLog("检测到重复输出", "AgentWork - repeat detection");
+              break;
+            }
+            lastAssistantContent = currentContent;
+          }
+
+          // 根据循环原因设置下一轮系统提示（只调用一次 epoche）
+          let hasPendingTodo = false;
           if (shouldContinue) {
             isSystemSentForWorkPrompt = true;
             nextPromptReason = "tool";
-          } else if (hasPendingTodo) {
-            isSystemSentForWorkPrompt = true;
-            nextPromptReason = "todolist";
           } else {
-            isSystemSentForWorkPrompt = false;
-            nextPromptReason = null;
+            // 只有在没有 tool calls 时才检查 todolist
+            hasPendingTodo = await epoche(infoObject);
+            if (hasPendingTodo) {
+              isSystemSentForWorkPrompt = true;
+              nextPromptReason = "todolist";
+            } else {
+              isSystemSentForWorkPrompt = false;
+              nextPromptReason = null;
+            }
           }
+
+          // 记录当前循环状态
+          console.log(
+            `[AgentWork] 循环 #${workIterationCount} 结束: shouldContinue=${shouldContinue}, hasPendingTodo=${hasPendingTodo}, todolistDrivenCount=${todolistDrivenCount}`
+          );
         } catch (error) {
           recordErrorLog(error, "Agent work in AgentWork");
           console.log(error);
@@ -1370,9 +1644,10 @@ const AgentWork = async (infoObject) => {
             tokenUsage: null,
           };
         }
+        // 循环条件：使用已经计算好的值，不再重复调用 epoche
       } while (
         !workControl.isStopped &&
-        (shouldContinue || (await epoche(infoObject)))
+        (shouldContinue || (isSystemSentForWorkPrompt && nextPromptReason))
       );
     } catch (outerError) {
       console.log("[AgentWork] Outer error:", outerError);
@@ -1411,7 +1686,29 @@ const AgentWork = async (infoObject) => {
   }
 };
 
-// 暴露当前模型的 token 上限，供其他模块读取
-AgentWork.tokenLimit = model.tokenLimit;
+// 暴露获取当前模型 token 上限的函数，供其他模块读取
+// 注意：不能直接暴露 model.tokenLimit，因为 model 会在运行时更新
+AgentWork.getTokenLimit = () => {
+  // 优先使用当前模型配置的 tokenLimit
+  const currentConfig = getCurrentModelConfig();
+  if (currentConfig && currentConfig.tokenLimit > 0) {
+    return currentConfig.tokenLimit;
+  }
+  // fallback 到 model 对象
+  if (model && model.tokenLimit > 0) {
+    return model.tokenLimit;
+  }
+  // 最终默认值
+  return 130000;
+};
+
+// 兼容旧代码：保留静态属性（但不推荐使用）
+Object.defineProperty(AgentWork, "tokenLimit", {
+  get: function () {
+    return AgentWork.getTokenLimit();
+  },
+  enumerable: true,
+  configurable: true,
+});
 
 module.exports = AgentWork;

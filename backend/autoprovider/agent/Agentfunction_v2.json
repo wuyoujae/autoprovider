@@ -1,0 +1,273 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "create_file",
+      "description": "Create files with content. Use 'files' array for files, 'file_names' for empty files/folders (.floder suffix for folders).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "file_path": { "type": "string", "description": "Absolute path from project root" },
+                "content": { "type": "string", "description": "File content" }
+              },
+              "required": ["file_path", "content"]
+            },
+            "description": "Files with content: [{\"file_path\": \"/src/App.vue\", \"content\": \"code\"}]"
+          },
+          "file_names": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Empty files or folders (.floder suffix)"
+          }
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "edit_file",
+      "description": "Edit file by context matching. Include surrounding context lines and use '// ... existing code ...' to skip unchanged parts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_file": { "type": "string", "description": "File path to edit" },
+          "instructions": { "type": "string", "description": "What to change (1 sentence)" },
+          "code_edit": { "type": "string", "description": "Code with context anchors. MUST include '// ... existing code ...' for omitted sections" }
+        },
+        "required": ["target_file", "instructions", "code_edit"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "read_file",
+      "description": "Read file contents. Files only (not folders).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_paths": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Absolute file paths to read"
+          }
+        },
+        "required": ["file_paths"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "delete_file",
+      "description": "Delete files/folders. Use .floder suffix for folders.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_paths": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Paths to delete"
+          }
+        },
+        "required": ["file_paths"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "grep_file",
+      "description": "Search project files for keyword. Returns matching file paths and counts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "keyword": { "type": "string", "description": "Search text" },
+          "case_sensitive": { "type": "boolean", "description": "Default: false" },
+          "ignore_paths": { "type": "array", "items": { "type": "string" }, "description": "Paths to skip" },
+          "max_results": { "type": "number", "description": "Max files. Default: 200" }
+        },
+        "required": ["keyword"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "sql_operation",
+      "description": "Execute single SQL statement (MySQL). CREATE, ALTER, INSERT, UPDATE, DELETE, SELECT.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sql": { "type": "string", "description": "SQL statement" }
+        },
+        "required": ["sql"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "bash_operation",
+      "description": "Run bash commands. Destructive commands blocked.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "commands": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "working_directory": { "type": "string", "description": "Absolute path" },
+                "instruction": { "type": "string", "description": "Command to run" }
+              },
+              "required": ["working_directory", "instruction"]
+            },
+            "description": "MUST be array, NOT string: [{\"working_directory\": \"/app\", \"instruction\": \"npm install\"}]"
+          }
+        },
+        "required": ["commands"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "web_search",
+      "description": "Web search/read. Types: web_search (keyword), web_reader (URL), chat (question).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search_content": { "type": "string", "description": "Keyword, URL, or question" },
+          "search_type": {
+            "type": "string",
+            "enum": ["web_search", "web_reader", "chat", "search", "reader", "read"],
+            "description": "Action type"
+          }
+        },
+        "required": ["search_content", "search_type"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "create_todolist",
+      "description": "Create todolist for complex tasks. Mark items complete immediately after finishing each.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "todolist_name": { "type": "string", "description": "Format: projectId-timestamp-name" },
+          "todos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": { "type": "string", "description": "Verb + specific action (max 14 words)" }
+              },
+              "required": ["title"]
+            }
+          }
+        },
+        "required": ["todolist_name", "todos"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "done_todo",
+      "description": "Mark todo as complete. Call IMMEDIATELY after finishing each task.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "todolist_name": { "type": "string" },
+          "todos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": { "type": "string", "description": "Exact title to mark done" }
+              },
+              "required": ["title"]
+            }
+          }
+        },
+        "required": ["todolist_name", "todos"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "exit_todolist",
+      "description": "Exit todolist loop. Use when waiting for user input or need to pause.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "todolist_name": { "type": "string", "description": "Optional: specific list" },
+          "reason": { "type": "string", "description": "Why exiting" }
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "deploy",
+      "description": "Deploy project. Run linter first. No parameters needed.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "linter",
+      "description": "Run linter. MUST run after code changes and before deploy.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "description": "Tech stack (e.g., nextjs)" }
+        }
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "generate_project_name",
+      "description": "Generate project name. Only call when name is 'New project' or empty.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "core_concept": { "type": "string", "description": "4-6 words describing project" }
+        },
+        "required": ["core_concept"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "generate_conversation_name",
+      "description": "Generate kebab-case conversation name.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string", "description": "What the conversation is about" }
+        },
+        "required": ["description"]
+      }
+    }
+  }
+]
+

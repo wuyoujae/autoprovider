@@ -1,8 +1,9 @@
-const { exec } = require("child_process");
+const { exec, spawn } = require("child_process");
 const { promisify } = require("util");
 const fs = require("fs").promises;
 const fsSync = require("fs");
 const path = require("path");
+const net = require("net");
 const combyFilePath = require("../systemAgentLoop/utils/combyFilePath");
 const recordOperation = require("../systemAgentLoop/utils/recordOperation");
 const { deployProject } = require("../systemWorkLoop/deploy/deployProject");
@@ -12,6 +13,186 @@ const chatToFrontend = require("./functionChatToFrontend/chatToFrontend");
 
 // 将 exec 转换为 Promise 版本
 const execAsync = promisify(exec);
+
+// 本地 dev server 进程注册表（按 projectId 复用）
+// value: { proc: ChildProcess, port: number, url: string, startedAt: number }
+const devServerRegistry = new Map();
+
+const hasDokployConfig = () => {
+  return !!(process.env.DOKPLOY_BASE_URL && process.env.DOKPLOY_API_KEY);
+};
+
+const isProcessAlive = (proc) => {
+  return !!proc && proc.exitCode === null && !proc.killed;
+};
+
+// 更可靠的端口选择（和 initNewProject 保持一致）：
+// - 优先尝试指定端口（在 0.0.0.0 上探测）
+// - 如果不可用，使用系统分配的随机空闲端口
+const getAvailablePort = async (preferredPort = 3000) => {
+  const canListen = (port) =>
+    new Promise((resolve) => {
+      const server = net.createServer();
+      server.once("error", () => resolve(false));
+      server.once("listening", () => {
+        server.close(() => resolve(true));
+      });
+      server.listen(port, "0.0.0.0");
+    });
+
+  if (preferredPort && (await canListen(preferredPort))) {
+    return preferredPort;
+  }
+
+  return await new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once("error", reject);
+    server.listen(0, "0.0.0.0", () => {
+      const addr = server.address();
+      const port = typeof addr === "object" && addr ? addr.port : null;
+      server.close(() => resolve(port));
+    });
+  });
+};
+
+const waitForPortOpen = async (port, host = "127.0.0.1", timeoutMs = 20000) => {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const ok = await new Promise((resolve) => {
+      const socket = new net.Socket();
+      const onDone = (result) => {
+        try {
+          socket.destroy();
+        } catch (e) {
+          // ignore
+        }
+        resolve(result);
+      };
+      socket.setTimeout(800);
+      socket.once("connect", () => onDone(true));
+      socket.once("timeout", () => onDone(false));
+      socket.once("error", () => onDone(false));
+      socket.connect(port, host);
+    });
+    if (ok) return true;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return false;
+};
+
+const detectDevRunner = async (projectRoot, packageJson) => {
+  const scripts = packageJson?.scripts || {};
+  const devScript = scripts.dev || "";
+  const deps = {
+    ...(packageJson?.dependencies || {}),
+    ...(packageJson?.devDependencies || {}),
+  };
+
+  // 优先从脚本判断
+  if (/next(\s+dev|\s*$)/i.test(devScript)) return "next";
+  if (/vite/i.test(devScript)) return "vite";
+
+  // 再从依赖判断
+  if (deps.next) return "next";
+  if (deps.vite || deps["@vitejs/plugin-vue"] || deps["@vitejs/plugin-react"]) {
+    return "vite";
+  }
+
+  // 默认：unknown（仍然用 npm run dev）
+  return "unknown";
+};
+
+const startOrReuseLocalDevServer = async ({
+  projectId,
+  projectRoot,
+  infoObject,
+}) => {
+  const existing = devServerRegistry.get(projectId);
+  if (existing && isProcessAlive(existing.proc)) {
+    return { url: existing.url, port: existing.port, reused: true };
+  }
+
+  const packageJsonPath = path.join(projectRoot, "package.json");
+  const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
+  const packageJson = JSON.parse(packageJsonContent);
+
+  const runner = await detectDevRunner(projectRoot, packageJson);
+
+  // 端口选择：优先默认端口（Next:3000 / Vite:5173），被占用则自动分配随机可用端口
+  const defaultPort = runner === "vite" ? 5173 : 3000;
+  const port = await getAvailablePort(defaultPort);
+  if (!port) throw new Error("无法找到可用端口启动本地 dev server");
+
+  // 生成对浏览器友好的预览 URL（可通过环境变量覆盖 host）
+  const previewHost = process.env.DEV_PREVIEW_HOST || "localhost";
+  const url = `http://${previewHost}:${port}`;
+
+  // 通过参数/环境尽量确保可被 iframe 访问：监听 0.0.0.0
+  const env = {
+    ...process.env,
+  };
+
+  const npmArgs = ["run", "dev", "--"];
+  const extraArgs = [];
+
+  if (runner === "next") {
+    // Next 支持 -p / -H；同时设置环境变量兜底
+    env.PORT = String(port);
+    env.HOSTNAME = env.HOSTNAME || "0.0.0.0";
+    extraArgs.push("-p", String(port), "-H", "0.0.0.0");
+  } else if (runner === "vite") {
+    extraArgs.push("--host", "0.0.0.0", "--port", String(port));
+  } else {
+    // unknown：只设置 PORT/HOSTNAME，避免 dev 脚本不识别参数导致报错
+    env.PORT = env.PORT || String(port);
+    env.HOSTNAME = env.HOSTNAME || "0.0.0.0";
+  }
+
+  const args = runner === "unknown" ? ["run", "dev"] : npmArgs.concat(extraArgs);
+
+  // 启动 dev server（后台常驻）
+  const proc = spawn("npm", args, {
+    cwd: projectRoot,
+    env,
+    shell: true, // Windows 兼容
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  const prefix = `[local-dev:${projectId}]`;
+  proc.stdout?.on("data", (buf) => {
+    const msg = buf.toString();
+    console.log(prefix, msg.trimEnd());
+  });
+  proc.stderr?.on("data", (buf) => {
+    const msg = buf.toString();
+    console.log(prefix, msg.trimEnd());
+  });
+  proc.on("exit", (code, signal) => {
+    console.log(`${prefix} exited`, { code, signal });
+    const cur = devServerRegistry.get(projectId);
+    if (cur && cur.proc === proc) {
+      devServerRegistry.delete(projectId);
+    }
+  });
+
+  // 等待端口可访问
+  const ready = await waitForPortOpen(port, "127.0.0.1", 20000);
+  if (!ready) {
+    // 进程可能已退出，补充错误信息
+    if (!isProcessAlive(proc)) {
+      throw new Error("本地 dev server 启动失败（进程已退出）");
+    }
+    throw new Error("本地 dev server 启动超时（端口未就绪）");
+  }
+
+  devServerRegistry.set(projectId, { proc, port, url, startedAt: Date.now() });
+
+  // 这里也给前端一个“可用 URL”提示（保持 deploy 标签，以便复用现有渲染）
+  await chatToFrontend(`部署成功，预览地址: ${url}`, "deploy", infoObject);
+
+  return { url, port, reused: false };
+};
 
 /**
  * 构建操作记录代码
@@ -67,8 +248,8 @@ async function deploy(payload = {}, infoObject = {}) {
       }
     }
 
-    // 优先使用 Dokploy 部署流程（Next.js 单体服务）
-    if (dokployProjectId) {
+    // 优先使用 Dokploy 部署流程（需要：有 dokployProjectId 且环境变量已配置）
+    if (dokployProjectId && hasDokployConfig()) {
       console.log(
         `[deploy] 开始 Dokploy 部署流程, ProjectID: ${projectId}, DokployID: ${dokployProjectId}`
       );
@@ -244,10 +425,10 @@ async function deploy(payload = {}, infoObject = {}) {
       }
     }
 
-    // 如果没有 dokployProjectId，回退到旧的本地脚本部署逻辑
-    console.log(`[deploy] 未找到 Dokploy ID，回退到本地脚本部署流程`);
-
-    // 通知前端开始本地部署（保持统一文案）
+    // 无 Dokploy 配置：启动本地 dev server，并返回可预览 URL
+    console.log(
+      `[deploy] 未配置 Dokploy 或缺少 dokploy_id，启用本地 dev 预览模式`
+    );
     await chatToFrontend("开始部署", "deploy", infoObject);
 
     // 使用 combyFilePath 获取项目根目录
@@ -292,204 +473,57 @@ async function deploy(payload = {}, infoObject = {}) {
       };
     }
 
-    // 读取 package.json（异步）
-    let packageJson;
-    try {
-      const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
-      packageJson = JSON.parse(packageJsonContent);
-    } catch (error) {
-      return {
-        status: 1,
-        message: "deploy fail",
-        data: {
-          error: `无法读取或解析 package.json: ${error.message}`,
-        },
-      };
-    }
-
-    const scripts = packageJson.scripts || {};
+    // 启动/复用本地 dev server
     const deploySteps = [];
-    const errors = [];
-
-    // 步骤 1: 检查是否有 build 脚本（异步执行）
-    if (scripts.build) {
-      await sendDeployUpdate();
       try {
-        const { stdout: buildOutput } = await execAsync("npm run build", {
-          cwd: projectRoot,
-          encoding: "utf-8",
-          timeout: 300000, // 5分钟超时
-          maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-        });
+      const devResult = await startOrReuseLocalDevServer({
+        projectId,
+        projectRoot,
+        infoObject,
+      });
+
         deploySteps.push({
-          step: "build",
+        step: "dev",
           status: "success",
-          output: buildOutput || "Build 完成",
-        });
-        await sendDeployUpdate();
-      } catch (error) {
-        const errorOutput = error.stdout || error.stderr || error.message;
-        deploySteps.push({
-          step: "build",
-          status: "failed",
-          output: errorOutput,
-        });
-        errors.push(`Build 失败: ${errorOutput}`);
-        await sendDeployUpdate();
-        await sendDeployUpdate();
-      }
-    } else {
-      deploySteps.push({
-        step: "build",
-        status: "skipped",
-        output: "未找到 build 脚本",
+        output: devResult.reused ? "dev 已在运行（复用）" : "dev 启动成功",
+        url: devResult.url,
+        port: devResult.port,
+      });
+
+      // 记录操作
+      if (infoObject.dialogueId && infoObject.connection) {
+        await recordOperation({
+          dialogueId: infoObject.dialogueId,
+          operationCode: "部署成功",
+          operationMethod: "deploy",
+          operationStatus: 0,
+          connection: infoObject.connection,
+          operationIndex: 0,
       });
     }
 
-    // 如果 build 失败，不继续后续步骤
-    if (errors.length > 0) {
+      return {
+        status: 0,
+        message: "deploy success",
+        data: {
+          mode: "local-dev",
+          steps: deploySteps,
+          frontendUrl: devResult.url,
+        },
+      };
+    } catch (devError) {
+      console.error(`[deploy] ❌ 本地 dev 启动失败: ${devError.message}`);
+      recordErrorLog(devError, "deploy - localDev");
+      await chatToFrontend("部署失败！正在分析问题", "deploy", infoObject);
       return {
         status: 1,
         message: "deploy fail",
         data: {
-          error: "Build 失败，部署终止",
+          error: devError.message || "本地 dev 启动失败",
           steps: deploySteps,
-          errors,
         },
       };
     }
-
-    // 步骤 2: 检查是否有 test 脚本（异步执行）
-    if (
-      scripts.test &&
-      scripts.test !== 'echo "Error: no test specified" && exit 1'
-    ) {
-      await sendDeployUpdate();
-      try {
-        const { stdout: testOutput } = await execAsync("npm run test", {
-          cwd: projectRoot,
-          encoding: "utf-8",
-          timeout: 180000, // 3分钟超时
-          maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-        });
-        deploySteps.push({
-          step: "test",
-          status: "success",
-          output: testOutput || "测试通过",
-        });
-        await sendDeployUpdate();
-      } catch (error) {
-        const errorOutput = error.stdout || error.stderr || error.message;
-        deploySteps.push({
-          step: "test",
-          status: "failed",
-          output: errorOutput,
-        });
-        errors.push(`测试失败: ${errorOutput}`);
-        await sendDeployUpdate();
-        await sendDeployUpdate();
-      }
-    } else {
-      deploySteps.push({
-        step: "test",
-        status: "skipped",
-        output: "未找到有效的 test 脚本",
-      });
-    }
-
-    // 如果测试失败，不继续部署
-    if (errors.length > 0) {
-      return {
-        status: 1,
-        message: "deploy fail",
-        data: {
-          error: "测试失败，部署终止",
-          steps: deploySteps,
-          errors,
-        },
-      };
-    }
-
-    // 步骤 3: 检查是否有 deploy 脚本（异步执行）
-    if (scripts.deploy) {
-      await sendDeployUpdate();
-      try {
-        const { stdout: deployOutput } = await execAsync("npm run deploy", {
-          cwd: projectRoot,
-          encoding: "utf-8",
-          timeout: 600000, // 10分钟超时
-          maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-        });
-        deploySteps.push({
-          step: "deploy",
-          status: "success",
-          output: deployOutput || "部署完成",
-        });
-        await sendDeployUpdate();
-      } catch (error) {
-        const errorOutput = error.stdout || error.stderr || error.message;
-        deploySteps.push({
-          step: "deploy",
-          status: "failed",
-          output: errorOutput,
-        });
-        errors.push(`部署失败: ${errorOutput}`);
-        await sendDeployUpdate();
-
-        return {
-          status: 1,
-          message: "deploy fail",
-          data: {
-            error: "部署脚本执行失败",
-            steps: deploySteps,
-            errors,
-          },
-        };
-      }
-    } else {
-      deploySteps.push({
-        step: "deploy",
-        status: "skipped",
-        output: "未找到 deploy 脚本，项目已构建但未自动部署",
-      });
-    }
-
-    // 记录操作到数据库
-    if (infoObject.dialogueId && infoObject.connection) {
-      const operationCode = constructOperationCode("deploy", [
-        {
-          stepsExecuted: deploySteps.length,
-          hasErrors: errors.length > 0,
-        },
-      ]);
-      await recordOperation({
-        dialogueId: infoObject.dialogueId,
-        operationCode: `<deploy>deploy</deploy>`,
-        operationMethod: "deploy",
-        operationStatus: 0,
-        connection: infoObject.connection,
-        operationIndex: 0,
-      });
-    }
-
-    // 构建返回数据
-    const responseData = {
-      steps: deploySteps,
-      totalSteps: deploySteps.length,
-      successSteps: deploySteps.filter((s) => s.status === "success").length,
-      failedSteps: deploySteps.filter((s) => s.status === "failed").length,
-      skippedSteps: deploySteps.filter((s) => s.status === "skipped").length,
-    };
-
-    if (errors.length > 0) {
-      responseData.errors = errors;
-    }
-
-    return {
-      status: 0,
-      message: "deploy success",
-      data: responseData,
-    };
   } catch (error) {
     console.error("[deploy] 执行异常:", error);
     recordErrorLog(error, "AIfunction-deploy");

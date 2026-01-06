@@ -148,8 +148,14 @@ async function bashOperation(payload = {}, infoObject = {}) {
       }
 
       // 解码
-      const decodedWorkDir = decodeHtmlEntities(workingDirectory);
+      let decodedWorkDir = decodeHtmlEntities(workingDirectory);
       const command = decodeHtmlEntities(instruction).trim();
+
+      // 兼容不同平台/不同调用风格：将 "/xxx" 这种绝对样式的工作目录转换为相对目录
+      // 否则在 Windows 下 path.join(base, "/app") 可能导致丢失 basePath
+      decodedWorkDir = String(decodedWorkDir).replace(/\\/g, "/");
+      decodedWorkDir = decodedWorkDir.replace(/^\/+/, ""); // 去掉开头的 /
+      if (!decodedWorkDir) decodedWorkDir = "."; // 根目录
 
       // 使用 commandOperationPath + decodedWorkDir 组合完整的项目路径
       const absoluteWorkDir = path.join(commandOperationPath, decodedWorkDir);

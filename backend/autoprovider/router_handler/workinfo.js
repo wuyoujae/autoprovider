@@ -7,6 +7,7 @@ const {
   loadChatHistory,
   message2token,
 } = require("../utils/systemAgentLoop/utils/combyChatHistory");
+const { countMessagesTokens } = require("../utils/tokenCounter");
 const {
   calcPreToken,
 } = require("../utils/systemAgentLoop/utils/combyChatHistory/getPreToken");
@@ -14,24 +15,46 @@ const AgentWork = require("../utils/systemAgentLoop/Agent");
 const db = require("../db/index");
 const { redis } = require("../db/redis");
 
-// SSH 远程数据库操作（用于 Dokploy 环境）
-const {
-  getDbContainerId: getRemoteDbContainerId,
-} = require("../utils/systemWorkLoop/ssh2/getDbContainerId");
-const {
-  executeDbCommand: executeRemoteDbCommand,
-} = require("../utils/systemWorkLoop/ssh2/executeDbCommand");
-
-// 本地 Docker 数据库操作
-const {
-  executeLocalDbCommand,
-  findLocalDbContainer,
-  isDockerAvailable,
-} = require("../utils/systemWorkLoop/database/localDbCommand");
+// 本地 MySQL 配置（与 db.js 保持一致）
+const MYSQL_HOST = process.env.DB_HOST || "localhost";
+const MYSQL_PORT = process.env.DB_PORT || "3306";
+const MYSQL_USER = process.env.DB_USER || "root";
+const MYSQL_PASSWORD = process.env.DB_PASSWORD || "123456";
 
 // 判断是否使用远程 Dokploy 模式
 const isRemoteMode = () => {
   return !!(process.env.DOKPLOY_BASE_URL && process.env.DOKPLOY_API_KEY);
+};
+
+// 本地 MySQL 直连执行 SQL（不使用 Docker）
+const executeLocalMySqlDirect = async ({ dbName, sql }) => {
+  let connection;
+  try {
+    const dbUrl = `mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST}:${MYSQL_PORT}/${dbName}`;
+    connection = await require("mysql2/promise").createConnection(dbUrl);
+    const [rows] = await connection.query(sql);
+    
+    // 将结果转换为制表符分隔的文本格式（与 Docker 执行输出兼容）
+    let output = "";
+    if (Array.isArray(rows) && rows.length > 0) {
+      // 获取列名
+      const columns = Object.keys(rows[0]);
+      // 转换每行为制表符分隔
+      output = rows.map(row => columns.map(col => row[col] ?? "").join("\t")).join("\n");
+    }
+    
+    return { status: 0, data: { output } };
+  } catch (error) {
+    return { status: 1, message: error.message, data: { output: error.message } };
+  } finally {
+    if (connection) {
+      try {
+        await connection.end();
+      } catch (e) {
+        // ignore
+      }
+    }
+  }
 };
 
 /**
@@ -359,17 +382,11 @@ const getprojectdbstructure = async (req, res) => {
 
     const dbName = resolveDbName(normalizedProjectId);
     logInfo("getprojectdbstructure", "start", { project_id, dbName });
-    const containerId = await resolveContainerId(normalizedProjectId, dbName);
-    logInfo("getprojectdbstructure", "container resolved", { containerId });
 
+    // 直接使用本地 MySQL 连接（不使用 Docker）
     // 获取所有表名
     const showTables = await retryExecute(
-      () =>
-        executeDbCommand({
-          containerId,
-          dbName,
-          sql: "SHOW TABLES;",
-        }),
+      () => executeLocalMySqlDirect({ dbName, sql: "SHOW TABLES;" }),
       3,
       1500
     );
@@ -390,8 +407,7 @@ const getprojectdbstructure = async (req, res) => {
     for (const tableName of tableNames) {
       const showCols = await retryExecute(
         () =>
-          executeDbCommand({
-            containerId,
+          executeLocalMySqlDirect({
             dbName,
             sql: `SHOW FULL COLUMNS FROM \`${tableName}\`;`,
           }),
@@ -487,14 +503,12 @@ const gettabledata = async (req, res) => {
       page: currentPage,
       page_size: limit,
     });
-    const containerId = await resolveContainerId(normalizedProjectId, dbName);
-    logInfo("gettabledata", "container resolved", { containerId });
 
+    // 直接使用本地 MySQL 连接（不使用 Docker）
     // 获取列定义（保持顺序）
     const showCols = await retryExecute(
       () =>
-        executeDbCommand({
-          containerId,
+        executeLocalMySqlDirect({
           dbName,
           sql: `SHOW COLUMNS FROM \`${normalizedTableName}\`;`,
         }),
@@ -515,8 +529,7 @@ const gettabledata = async (req, res) => {
     // 获取数据
     const selectRes = await retryExecute(
       () =>
-        executeDbCommand({
-          containerId,
+        executeLocalMySqlDirect({
           dbName,
           sql: `SELECT * FROM \`${normalizedTableName}\` LIMIT ${limit} OFFSET ${offset};`,
         }),
@@ -536,8 +549,7 @@ const gettabledata = async (req, res) => {
     // 获取总数
     const countRes = await retryExecute(
       () =>
-        executeDbCommand({
-          containerId,
+        executeLocalMySqlDirect({
           dbName,
           sql: `SELECT COUNT(*) as total FROM \`${normalizedTableName}\`;`,
         }),
@@ -661,15 +673,15 @@ const gettokenusage = async (req, res) => {
     const chatHistory = await loadChatHistory({
       connection,
       workId,
-      historyLimit: 100,
       tokenLimit: MODEL_TOKEN_LIMIT,
     });
 
     // 4. 计算对话记录的 token 数量
-    let contextTokens = 0;
-    for (const message of chatHistory) {
-      contextTokens += message2token(JSON.stringify(message));
-    }
+    // 使用 encodeChat 口径，避免 JSON.stringify(message) 把结构字段也算进 token 导致偏大
+    const contextTokens = countMessagesTokens(chatHistory);
+
+    // 调试日志
+    console.log(`[gettokenusage] workId=${workId}, chatHistory.length=${chatHistory?.length || 0}, contextTokens=${contextTokens}, presetTokens=${presetTokens}, MODEL_TOKEN_LIMIT=${MODEL_TOKEN_LIMIT}`);
 
     // 5. 计算总使用量（preset + 历史对话）
     const totalUsedTokens = Math.min(
@@ -683,6 +695,12 @@ const gettokenusage = async (req, res) => {
       data: {
         model_token_limit: MODEL_TOKEN_LIMIT,
         total_used_tokens: Math.round(totalUsedTokens),
+        // 调试信息
+        debug: {
+          contextTokens,
+          presetTokens,
+          chatHistoryLength: chatHistory?.length || 0,
+        },
       },
     });
   } catch (error) {

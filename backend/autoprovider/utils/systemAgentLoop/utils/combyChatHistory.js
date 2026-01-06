@@ -220,6 +220,34 @@ function validateAndFixToolCallPairs(messages) {
 function message2token(str) {
   return countTokens(str);
 }
+
+/**
+ * 将 message 裁剪为 token 计数所需的最小字段，避免把 dialogue_id 等额外字段也算进 token
+ * @param {any} msg
+ * @returns {{role?: string, content?: any, tool_calls?: any, tool_call_id?: any}}
+ */
+function normalizeMessageForToken(msg) {
+  if (!msg || typeof msg !== "object") return {};
+  const normalized = {
+    role: msg.role,
+    content: msg.content,
+  };
+  // OpenAI tools 相关字段
+  if (msg.tool_calls) normalized.tool_calls = msg.tool_calls;
+  if (msg.tool_call_id) normalized.tool_call_id = msg.tool_call_id;
+  return normalized;
+}
+
+/**
+ * 计算一组 messages 的 token 数（尽量贴近 chat API 口径）
+ * @param {Array} messages
+ * @returns {number}
+ */
+function countGroupTokens(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) return 0;
+  const normalized = messages.map(normalizeMessageForToken);
+  return countMessagesTokens(normalized);
+}
 /**
  * 从数据库连接中获取指定会话的聊天历史记录，并转换为消息格式。
  * @param {Object} params
@@ -365,11 +393,8 @@ const loadChatHistory = async ({
           // 1. 输出消息组
 
           // 计算该组 token，并累计 totalTokens（不再截断）
-          let groupTokenCount = 0;
-          for (const msg of currentGroup) {
-            groupTokenCount += message2token(JSON.stringify(msg)); // 简单估算，包含所有字段
-          }
-          totalTokens += groupTokenCount;
+          // 使用 countMessagesTokens（encodeChat）口径，避免 JSON.stringify 造成 token 偏大
+          totalTokens += countGroupTokens(currentGroup);
 
           // 直接追加该组，不再受 tokenLimit 截断
           messageGroups.push(currentGroup);
@@ -392,14 +417,16 @@ const loadChatHistory = async ({
     // 我们需要返回的 messages 应该是时间正序: [OldestGroup, ..., LatestGroup]
     // 所以需要 reverse messageGroups
 
-    // 如果 totalTokens 超过 tokenLimit，需要压缩历史消息
+    // 如果 totalTokens 超过 tokenLimit 的 95%，需要压缩历史消息
     // messageGroups 当前是 [LatestGroup, OlderGroup, ...] 倒序排列
     let didCompress = false;
     let compressIterations = 0;
     const MAX_COMPRESS_ITERATIONS = 5; // 最大压缩次数，防止无限循环
     let lastTotalTokens = totalTokens;
+    const COMPRESS_THRESHOLD = 0.95; // 压缩触发阈值：token 使用超过 95% 时触发压缩
+    const compressThresholdTokens = Math.floor(tokenLimit * COMPRESS_THRESHOLD);
 
-    while (totalTokens > tokenLimit && messageGroups.length > 0) {
+    while (totalTokens > compressThresholdTokens && messageGroups.length > 0) {
       if (!didCompress) {
         // 首次压缩前输出一次压缩参数日志
         console.log("----开始处理压缩-----");
@@ -407,6 +434,8 @@ const loadChatHistory = async ({
         console.log(`最大可用token数：${maxModelToken}`);
         console.log(`presetMessages消耗了的token：${presetMessagesToken}`);
         console.log(`剩余给dialogue历史可用token：${tokenLimit}`);
+        console.log(`压缩触发阈值(95%)：${compressThresholdTokens}`);
+        console.log(`当前历史token使用量：${totalTokens}`);
       }
       didCompress = true;
       compressIterations++;
@@ -452,17 +481,15 @@ const loadChatHistory = async ({
       // 合并保留的组和压缩后的组（保留的在前，压缩后的在后）
       messageGroups = [...keepGroups, ...compressedGroups];
 
-      // 重新计算 totalTokens
+      // 重新计算 totalTokens（使用一致口径）
       totalTokens = 0;
       for (const group of messageGroups) {
-        for (const msg of group) {
-          totalTokens += message2token(JSON.stringify(msg));
-        }
+        totalTokens += countGroupTokens(group);
       }
 
-      // 如果压缩后只剩一组且仍超限，说明无法再压缩，直接跳出避免死循环
-      if (messageGroups.length <= 1 && totalTokens > tokenLimit) {
-        console.log("[loadChatHistory] 压缩后仍超限但无法继续压缩，跳出循环");
+      // 如果压缩后只剩一组且仍超过 95% 阈值，说明无法再压缩，直接跳出避免死循环
+      if (messageGroups.length <= 1 && totalTokens > compressThresholdTokens) {
+        console.log("[loadChatHistory] 压缩后仍超过95%阈值但无法继续压缩，跳出循环");
         break;
       }
 
@@ -713,10 +740,8 @@ const assembleChatMessages = async (presetMessages, infoObject) => {
   let availableTokenLimit = infoObject.tokenLimit;
 
   // 1. 计算 presetMessages 的 token 消耗
-  let presetMessagesToken = 0;
-  for (const msg of presetMessages) {
-    presetMessagesToken += message2token(JSON.stringify(msg));
-  }
+  // 使用 countMessagesTokens（encodeChat）口径，避免 JSON.stringify 导致 token 偏大
+  const presetMessagesToken = countGroupTokens(presetMessages);
   console.log(
     `[assembleChatMessages] presetMessages token: ${presetMessagesToken}`
   );
@@ -765,14 +790,8 @@ const assembleChatMessages = async (presetMessages, infoObject) => {
     messages.push(...chatHistory);
   }
 
-  //再加上当前轮的用户/系统驱动 prompt（系统驱动已写入历史则不再重复追加）
-  // 【修复】同时检查 newPrompt 是否为空，避免追加空消息
-  if (infoObject.dialogueSender !== "system" && infoObject.newPrompt && infoObject.newPrompt.trim()) {
-    messages.push({
-      role: "user",
-      content: infoObject.newPrompt,
-    });
-  }
+  // 【重要】user 消息已在 AgentWork 中写入 dialogue_record，
+  // loadChatHistory 会从数据库读取，这里不再重复追加，避免消息重复
   return messages;
 };
 
