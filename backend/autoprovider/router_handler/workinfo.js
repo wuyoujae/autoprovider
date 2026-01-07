@@ -650,8 +650,10 @@ const gettokenusage = async (req, res) => {
 
     const workId = workRows[0].work_id;
 
-    // 2. 从 Redis 获取真实的 presetMessages token 消耗
+    // 2. 优先从 Redis 获取 token（避免轮询时频繁全量加载历史导致卡死/失败）
     let presetTokens = 0;
+    let cachedContextTotalTokens = 0;
+    let cachedHistoryTokens = 0;
     try {
       const redisKey = `preset_token:${normalizedSessionId}`;
       const cachedPresetToken = await redis.get(redisKey);
@@ -661,6 +663,17 @@ const gettokenusage = async (req, res) => {
         // 如果 Redis 中没有缓存，使用静态估算值作为 fallback
         presetTokens = await calcPreToken();
       }
+
+      const contextKey = `context_token:${normalizedSessionId}`;
+      const historyKey = `context_history_token:${normalizedSessionId}`;
+      const cachedContext = await redis.get(contextKey);
+      const cachedHistory = await redis.get(historyKey);
+      if (cachedContext) {
+        cachedContextTotalTokens = parseInt(cachedContext, 10) || 0;
+      }
+      if (cachedHistory) {
+        cachedHistoryTokens = parseInt(cachedHistory, 10) || 0;
+      }
     } catch (redisErr) {
       logInfo("gettokenusage", "读取 Redis preset token 失败", {
         error: redisErr.message,
@@ -669,25 +682,51 @@ const gettokenusage = async (req, res) => {
       presetTokens = await calcPreToken();
     }
 
-    // 3. 加载历史对话记录
+    // 3. 如果 Redis 已经有缓存的 context，总量直接用缓存（最快、最稳定）
+    //    缓存由 assembleChatMessages 写入，能反映“当前上下文”（preset+history）
+    if (cachedContextTotalTokens > 0) {
+      const totalUsedTokens = Math.min(MODEL_TOKEN_LIMIT, cachedContextTotalTokens);
+      return res.send({
+        status: 0,
+        message: "获取 token 使用情况成功",
+        data: {
+          model_token_limit: MODEL_TOKEN_LIMIT,
+          total_used_tokens: Math.round(totalUsedTokens),
+          debug: {
+            contextTokens: cachedHistoryTokens || Math.max(0, cachedContextTotalTokens - presetTokens),
+            presetTokens,
+            chatHistoryLength: -1,
+            source: "redis",
+            workId,
+          },
+        },
+      });
+    }
+
+    // 4. Redis 未命中：回退到旧逻辑（全量加载并计算），并写回 Redis 供下次轮询使用
     const chatHistory = await loadChatHistory({
       connection,
       workId,
       tokenLimit: MODEL_TOKEN_LIMIT,
     });
 
-    // 4. 计算对话记录的 token 数量
-    // 使用 encodeChat 口径，避免 JSON.stringify(message) 把结构字段也算进 token 导致偏大
     const contextTokens = countMessagesTokens(chatHistory);
 
     // 调试日志
     console.log(`[gettokenusage] workId=${workId}, chatHistory.length=${chatHistory?.length || 0}, contextTokens=${contextTokens}, presetTokens=${presetTokens}, MODEL_TOKEN_LIMIT=${MODEL_TOKEN_LIMIT}`);
 
     // 5. 计算总使用量（preset + 历史对话）
-    const totalUsedTokens = Math.min(
-      MODEL_TOKEN_LIMIT,
-      contextTokens + presetTokens
-    );
+    const totalUsedTokens = Math.min(MODEL_TOKEN_LIMIT, contextTokens + presetTokens);
+
+    // 写回 Redis，减少下一次轮询开销
+    try {
+      const contextKey = `context_token:${normalizedSessionId}`;
+      const historyKey = `context_history_token:${normalizedSessionId}`;
+      await redis.set(contextKey, Math.round(totalUsedTokens), "EX", 86400);
+      await redis.set(historyKey, Math.round(contextTokens), "EX", 86400);
+    } catch (e) {
+      // ignore
+    }
 
     return res.send({
       status: 0,
@@ -700,6 +739,8 @@ const gettokenusage = async (req, res) => {
           contextTokens,
           presetTokens,
           chatHistoryLength: chatHistory?.length || 0,
+          source: "db_fallback",
+          workId,
         },
       },
     });

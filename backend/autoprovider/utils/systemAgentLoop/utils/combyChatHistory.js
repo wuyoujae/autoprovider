@@ -790,6 +790,26 @@ const assembleChatMessages = async (presetMessages, infoObject) => {
     messages.push(...chatHistory);
   }
 
+  // 将“当前上下文总 token（preset + history）”存入 Redis，供前端轮询展示使用
+  // 避免 gettokenusage 每次轮询都全量加载/计算导致卡死或失败，从而前端显示长期不更新
+  if (infoObject.sessionId) {
+    try {
+      const historyTokens = Array.isArray(chatHistory)
+        ? countMessagesTokens(chatHistory)
+        : 0;
+      const totalContextTokens = Math.round(presetMessagesToken + historyTokens);
+      const contextRedisKey = `context_token:${infoObject.sessionId}`;
+      const historyRedisKey = `context_history_token:${infoObject.sessionId}`;
+      await redis.set(contextRedisKey, totalContextTokens, "EX", 86400);
+      await redis.set(historyRedisKey, Math.round(historyTokens), "EX", 86400);
+    } catch (redisErr) {
+      console.log(
+        "[assembleChatMessages] 存储 context token 到 Redis 失败:",
+        redisErr.message
+      );
+    }
+  }
+
   // 【重要】user 消息已在 AgentWork 中写入 dialogue_record，
   // loadChatHistory 会从数据库读取，这里不再重复追加，避免消息重复
   return messages;
